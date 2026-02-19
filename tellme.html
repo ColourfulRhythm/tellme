@@ -234,6 +234,9 @@
       </div>
       <div class="err" id="lErr"></div>
       <button class="btn" style="margin-top:14px" onclick="login()">Open dashboard →</button>
+      <div style="text-align:center;margin-top:12px;">
+        <button class="btn ghost" onclick="clearLocalData()" style="font-size:12px;padding:8px 14px;">Clear local cache</button>
+      </div>
       <div class="divider">new here?</div>
       <button class="btn ghost" onclick="goHome()">Create a link</button>
     </div>
@@ -559,11 +562,24 @@ async function login(){
       show('dash');
       clearLogin();
     }catch(e){
-      // Login failed - clear any stale localStorage data
+      // Login failed - check if it's a PIN mismatch (likely corrupted localStorage)
       const accs=allAccs();
-      delete accs[normalizedHandle];
-      saveAll(accs);
-      err.textContent=e.message||'Login failed. Check your handle and PIN.';
+      const localAcc=accs[normalizedHandle];
+      if(localAcc && e.message && e.message.includes('Invalid handle or PIN')){
+        // Likely corrupted localStorage - offer to clear it
+        delete accs[normalizedHandle];
+        saveAll(accs);
+        err.textContent='Login failed. Local cache cleared. Try again with your correct PIN.';
+        err.style.color='var(--accent)';
+        setTimeout(()=>{
+          err.style.color='var(--danger)';
+        },3000);
+      }else{
+        // Clear stale data anyway
+        delete accs[normalizedHandle];
+        saveAll(accs);
+        err.textContent=e.message||'Login failed. Check your handle and PIN.';
+      }
       console.error('Login error:',e);
     }
   }else{
