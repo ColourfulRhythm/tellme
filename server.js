@@ -14,7 +14,27 @@ const DB_PATH = process.env.DB_PATH || (isVercel
   : path.join(__dirname, 'tellme.db'));
 
 // Middleware
-app.use(cors());
+// CORS - Allow requests from your domain
+const allowedOrigins = [
+  'https://tellme.adparlay.com',
+  'http://localhost:3000',
+  'http://localhost:8000',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:8000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(__dirname)); // Serve static files
 

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TellMe — Anonymous Questions</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👂</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
@@ -321,13 +322,18 @@
 <script>
 /* ====== CONFIG ====== */
 const API_BASE = window.location.origin; // Use same origin as frontend
-let USE_API = false; // Set to false to use localStorage only
+let USE_API = false; // Will be set after health check
 
 /* ====== API STORAGE ====== */
-// Disabled - using localStorage only
 async function apiHealthCheck(){
-  // API disabled - using localStorage
-  USE_API = false;
+  try{
+    const res=await fetch(API_BASE+'/api/health',{method:'GET',cache:'no-cache',timeout:2000});
+    USE_API=res.ok;
+    if(USE_API) console.log('✅ Backend API connected - data will persist');
+  }catch{
+    USE_API=false;
+    console.log('ℹ️ Using localStorage mode - data stored locally');
+  }
 }
 apiHealthCheck();
 
