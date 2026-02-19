@@ -335,13 +335,17 @@ const SUPABASE_URL = 'ENV_SUPABASE_URL';
 const SUPABASE_ANON_KEY = 'ENV_SUPABASE_ANON_KEY';
 
 // Initialize Supabase client
-let supabase = null;
+let supabaseClient = null;
 let USE_SUPABASE = false;
 
 if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== 'ENV_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' && SUPABASE_ANON_KEY !== 'ENV_SUPABASE_ANON_KEY') {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  USE_SUPABASE = true;
-  console.log('✅ Supabase connected - data will persist');
+  if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    USE_SUPABASE = true;
+    console.log('✅ Supabase connected - data will persist');
+  } else {
+    console.error('❌ Supabase library not loaded');
+  }
 } else {
   console.log('ℹ️ Supabase not configured - using localStorage mode');
   console.log('⚠️ Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables');
@@ -366,7 +370,7 @@ async function apiRegister(handle,pin){
   }
   
   // Check if handle exists
-  const {data:existing}=await supabase
+  const {data:existing}=await supabaseClient
     .from('accounts')
     .select('handle')
     .eq('handle',normalizedHandle)
@@ -377,7 +381,7 @@ async function apiRegister(handle,pin){
   }
   
   // Create account
-  const {error}=await supabase
+  const {error}=await supabaseClient
     .from('accounts')
     .insert({
       handle:normalizedHandle,
@@ -402,7 +406,7 @@ async function apiLogin(handle,pin){
   const pinHash=hashPin(pin);
   
   // Get account
-  const {data:account,error}=await supabase
+  const {data:account,error}=await supabaseClient
     .from('accounts')
     .select('handle,pin_hash')
     .eq('handle',normalizedHandle)
@@ -425,7 +429,7 @@ async function apiGetAccount(handle){
   const normalizedHandle=handle.toLowerCase();
   
   // Get account
-  const {data:account,error:accError}=await supabase
+  const {data:account,error:accError}=await supabaseClient
     .from('accounts')
     .select('handle,created_at')
     .eq('handle',normalizedHandle)
@@ -434,7 +438,7 @@ async function apiGetAccount(handle){
   if(accError||!account) return null;
   
   // Get messages
-  const {data:messages,error:msgError}=await supabase
+  const {data:messages,error:msgError}=await supabaseClient
     .from('messages')
     .select('id,text,is_new,created_at')
     .eq('handle',normalizedHandle)
@@ -473,7 +477,7 @@ async function apiSendQuestion(handle,text){
   }
   
   // Verify account exists
-  const {data:account}=await supabase
+  const {data:account}=await supabaseClient
     .from('accounts')
     .select('handle')
     .eq('handle',normalizedHandle)
@@ -484,7 +488,7 @@ async function apiSendQuestion(handle,text){
   }
   
   // Insert message
-  const {error}=await supabase
+  const {error}=await supabaseClient
     .from('messages')
     .insert({
       handle:normalizedHandle,
@@ -505,7 +509,7 @@ async function apiDeleteMessage(messageId,handle){
   
   const normalizedHandle=handle.toLowerCase();
   
-  const {error}=await supabase
+  const {error}=await supabaseClient
     .from('messages')
     .delete()
     .eq('id',messageId)
@@ -523,7 +527,7 @@ async function apiMarkRead(handle){
   
   const normalizedHandle=handle.toLowerCase();
   
-  await supabase
+  await supabaseClient
     .from('messages')
     .update({is_new:false})
     .eq('handle',normalizedHandle)
