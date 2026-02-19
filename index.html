@@ -986,26 +986,74 @@ function closeModal(){ document.getElementById('modal').classList.remove('show')
 
 function downloadCard(){
   const card=document.getElementById('theCard');
-  if(!card)return;
-  html2canvas(card,{scale:3,useCORS:true,backgroundColor:null,logging:false}).then(canvas=>{
-    const out=document.createElement('canvas');
-    out.width=canvas.width; out.height=canvas.height;
-    const ctx=out.getContext('2d');
-    const r=26*3, w=canvas.width, h=canvas.height;
-    ctx.beginPath();
-    ctx.moveTo(r,0);ctx.lineTo(w-r,0);ctx.quadraticCurveTo(w,0,w,r);
-    ctx.lineTo(w,h-r);ctx.quadraticCurveTo(w,h,w-r,h);
-    ctx.lineTo(r,h);ctx.quadraticCurveTo(0,h,0,h-r);
-    ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);
-    ctx.closePath();ctx.clip();
-    ctx.drawImage(canvas,0,0);
-    const a=document.createElement('a');
-    a.download='tellme-'+bHandle+'-'+Date.now()+'.jpg';
-    a.href=out.toDataURL('image/jpeg',.95);
-    a.click();
+  if(!card){
+    console.error('Card element not found');
+    toast('Error: Card not found');
+    return;
+  }
+  
+  if(typeof html2canvas === 'undefined'){
+    console.error('html2canvas library not loaded');
+    toast('Error: Download library not loaded. Please refresh the page.');
+    return;
+  }
+  
+  // Show loading state
+  const btn=document.querySelector('button[onclick="downloadCard()"]');
+  const originalText=btn?.textContent;
+  if(btn) btn.textContent='Generating...';
+  if(btn) btn.disabled=true;
+  
+  html2canvas(card,{
+    scale:3,
+    useCORS:true,
+    backgroundColor:null,
+    logging:false,
+    allowTaint:true,
+    onclone:function(clonedDoc){
+      // Ensure fonts are loaded in cloned document
+      const clonedCard=clonedDoc.getElementById('theCard');
+      if(clonedCard) clonedCard.style.fontFamily='DM Sans, sans-serif';
+    }
+  }).then(canvas=>{
+    try{
+      const out=document.createElement('canvas');
+      out.width=canvas.width; 
+      out.height=canvas.height;
+      const ctx=out.getContext('2d');
+      const r=26*3, w=canvas.width, h=canvas.height;
+      ctx.beginPath();
+      ctx.moveTo(r,0);ctx.lineTo(w-r,0);ctx.quadraticCurveTo(w,0,w,r);
+      ctx.lineTo(w,h-r);ctx.quadraticCurveTo(w,h,w-r,h);
+      ctx.lineTo(r,h);ctx.quadraticCurveTo(0,h,0,h-r);
+      ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);
+      ctx.closePath();ctx.clip();
+      ctx.drawImage(canvas,0,0);
+      const a=document.createElement('a');
+      a.download='tellme-'+bHandle+'-'+Date.now()+'.jpg';
+      a.href=out.toDataURL('image/jpeg',.95);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast('Card downloaded! 🎉');
+      closeModal();
+    }catch(e){
+      console.error('Error creating download:',e);
+      toast('Error downloading card: '+e.message);
+    }finally{
+      if(btn){
+        btn.textContent=originalText;
+        btn.disabled=false;
+      }
+    }
+  }).catch(e=>{
+    console.error('html2canvas error:',e);
+    toast('Error generating image: '+e.message);
+    if(btn){
+      btn.textContent=originalText;
+      btn.disabled=false;
+    }
   });
-  toast('Downloading...');
-  closeModal();
 }
 
 /* ====== UTILS ====== */
