@@ -319,7 +319,95 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ====== STORAGE ====== */
+/* ====== CONFIG ====== */
+const API_BASE = window.location.origin; // Use same origin as frontend
+let USE_API = false; // Set to false to use localStorage only
+
+/* ====== API STORAGE ====== */
+// Disabled - using localStorage only
+async function apiHealthCheck(){
+  // API disabled - using localStorage
+  USE_API = false;
+}
+apiHealthCheck();
+
+async function apiRegister(handle,pin){
+  try{
+    const res=await fetch(API_BASE+'/api/register',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,pin})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Registration failed');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiLogin(handle,pin){
+  try{
+    const res=await fetch(API_BASE+'/api/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,pin})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Login failed');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiGetAccount(handle){
+  try{
+    const res=await fetch(API_BASE+'/api/account/'+encodeURIComponent(handle),{cache:'no-cache'});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Account not found');
+    return {
+      handle:data.handle,
+      pinHash:'', // Not returned for security
+      messages:data.messages||[],
+      createdAt:data.createdAt
+    };
+  }catch(e){return null;}
+}
+
+async function apiSendQuestion(handle,text){
+  try{
+    const res=await fetch(API_BASE+'/api/question',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,text})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Failed to send question');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiDeleteMessage(messageId,handle){
+  try{
+    const res=await fetch(API_BASE+'/api/message/'+messageId,{
+      method:'DELETE',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Failed to delete message');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiMarkRead(handle){
+  try{
+    await fetch(API_BASE+'/api/messages/read',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle})
+    });
+  }catch(e){/* Ignore errors */}
+}
+
+/* ====== STORAGE (with API fallback) ====== */
 const KEY = 'tm_v1';
 function allAccs(){ try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return{};} }
 function saveAll(d){ localStorage.setItem(KEY,JSON.stringify(d)); }
@@ -371,38 +459,70 @@ function clearLogin(){
 }
 
 /* ====== REGISTER ====== */
-function register(){
+async function register(){
   const handle=document.getElementById('rHandle').value.trim();
   const pin=getPin('rp');
   const err=document.getElementById('rErr');
   err.textContent='';
   if(!handle||handle.length<2){err.textContent='Handle must be at least 2 characters.';return;}
   if(!/^\d{4}$/.test(pin)){err.textContent='Enter a 4-digit PIN.';return;}
-  if(getAcc(handle)){err.textContent='@'+handle+' is taken. Try another handle or log in.';return;}
-  putAcc(handle,{handle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
-  S={handle};
-  refreshNav();
-  renderDash();
-  show('dash');
-  toast('Link created! Share it 🎉');
+  
+  if(USE_API){
+    try{
+      await apiRegister(handle,pin);
+      // Also save locally as backup
+      putAcc(handle,{handle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
+      S={handle};
+      refreshNav();
+      await renderDash();
+      show('dash');
+      toast('Link created! Share it 🎉');
+    }catch(e){
+      err.textContent=e.message||'Registration failed. Try again.';
+    }
+  }else{
+    // Fallback to localStorage
+    if(getAcc(handle)){err.textContent='@'+handle+' is taken. Try another handle or log in.';return;}
+    putAcc(handle,{handle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
+    S={handle};
+    refreshNav();
+    renderDash();
+    show('dash');
+    toast('Link created! Share it 🎉');
+  }
 }
 
 /* ====== LOGIN ====== */
-function login(){
+async function login(){
   const handle=document.getElementById('lHandle').value.trim();
   const pin=getPin('lp');
   const err=document.getElementById('lErr');
   err.textContent='';
   if(!handle){err.textContent='Enter your handle.';return;}
   if(pin.length!==4){err.textContent='Enter your 4-digit PIN.';return;}
-  const acc=getAcc(handle);
-  if(!acc){err.textContent='No account found for @'+handle+'. Check your handle.';return;}
-  if(acc.pinHash!==hashPin(pin)){err.textContent='Wrong PIN. Try again.';return;}
-  S={handle};
-  refreshNav();
-  renderDash();
-  show('dash');
-  clearLogin();
+  
+  if(USE_API){
+    try{
+      await apiLogin(handle,pin);
+      S={handle};
+      refreshNav();
+      await renderDash();
+      show('dash');
+      clearLogin();
+    }catch(e){
+      err.textContent=e.message||'Login failed. Check your handle and PIN.';
+    }
+  }else{
+    // Fallback to localStorage
+    const acc=getAcc(handle);
+    if(!acc){err.textContent='No account found for @'+handle+'. Check your handle.';return;}
+    if(acc.pinHash!==hashPin(pin)){err.textContent='Wrong PIN. Try again.';return;}
+    S={handle};
+    refreshNav();
+    renderDash();
+    show('dash');
+    clearLogin();
+  }
 }
 
 function logout(){ S=null; refreshNav(); goHome(); toast('Logged out'); }
@@ -410,8 +530,13 @@ function logout(){ S=null; refreshNav(); goHome(); toast('Logged out'); }
 /* ====== ASK PAGE ====== */
 let askTarget=null;
 
-function loadAsk(handle){
-  const acc=getAcc(handle);
+async function loadAsk(handle){
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(handle);
+  }else{
+    acc=getAcc(handle);
+  }
   if(!acc){ alert('This link doesn\'t exist yet!'); return; }
   askTarget=handle;
   document.getElementById('askAv').textContent=handle.charAt(0).toUpperCase();
@@ -430,22 +555,34 @@ function upCC(){
   document.getElementById('cc').textContent=l+' / 280';
 }
 
-function sendQ(){
+async function sendQ(){
   const txt=document.getElementById('askMsg').value.trim();
   if(!txt||!askTarget)return;
-  const acc=getAcc(askTarget);
-  if(!acc)return;
-  acc.messages=acc.messages||[];
-  const now=new Date();
-  acc.messages.unshift({
-    id:Date.now(),text:txt,
-    time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-    date:now.toLocaleDateString([],{month:'short',day:'numeric'}),
-    isNew:true
-  });
-  putAcc(askTarget,acc);
-  document.getElementById('askForm').style.display='none';
-  document.getElementById('sentBox').style.display='block';
+  
+  if(USE_API){
+    try{
+      await apiSendQuestion(askTarget,txt);
+      document.getElementById('askForm').style.display='none';
+      document.getElementById('sentBox').style.display='block';
+    }catch(e){
+      alert('Failed to send question: '+(e.message||'Unknown error'));
+    }
+  }else{
+    // Fallback to localStorage
+    const acc=getAcc(askTarget);
+    if(!acc)return;
+    acc.messages=acc.messages||[];
+    const now=new Date();
+    acc.messages.unshift({
+      id:Date.now(),text:txt,
+      time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+      date:now.toLocaleDateString([],{month:'short',day:'numeric'}),
+      isNew:true
+    });
+    putAcc(askTarget,acc);
+    document.getElementById('askForm').style.display='none';
+    document.getElementById('sentBox').style.display='block';
+  }
 }
 
 function resetAsk(){
@@ -458,9 +595,14 @@ function resetAsk(){
 function previewAsk(){ if(S) loadAsk(S.handle); }
 
 /* ====== DASHBOARD ====== */
-function renderDash(){
+async function renderDash(){
   if(!S)return;
-  const acc=getAcc(S.handle);
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(S.handle);
+  }else{
+    acc=getAcc(S.handle);
+  }
   if(!acc)return;
   const msgs=acc.messages||[];
   const nw=msgs.filter(m=>m.isNew).length;
@@ -487,11 +629,15 @@ function renderDash(){
     </div>`).join('');
 
   // Mark as read after 2s
-  setTimeout(()=>{
-    const a=getAcc(S.handle);
-    if(!a)return;
-    a.messages.forEach(m=>m.isNew=false);
-    putAcc(S.handle,a);
+  setTimeout(async ()=>{
+    if(USE_API){
+      await apiMarkRead(S.handle);
+    }else{
+      const a=getAcc(S.handle);
+      if(!a)return;
+      a.messages.forEach(m=>m.isNew=false);
+      putAcc(S.handle,a);
+    }
     document.querySelectorAll('.mc.isnew').forEach(el=>{
       el.classList.remove('isnew');
       const nd=el.querySelector('.nd');
@@ -501,12 +647,21 @@ function renderDash(){
   },2000);
 }
 
-function delMsg(id){
+async function delMsg(id){
   if(!S)return;
-  const acc=getAcc(S.handle);
-  acc.messages=acc.messages.filter(m=>m.id!==id);
-  putAcc(S.handle,acc);
-  renderDash();
+  if(USE_API){
+    try{
+      await apiDeleteMessage(id,S.handle);
+      await renderDash();
+    }catch(e){
+      alert('Failed to delete message: '+(e.message||'Unknown error'));
+    }
+  }else{
+    const acc=getAcc(S.handle);
+    acc.messages=acc.messages.filter(m=>m.id!==id);
+    putAcc(S.handle,acc);
+    renderDash();
+  }
 }
 
 function copyLink(){
@@ -528,10 +683,15 @@ const dots={
   lime:['#3d8a1a','#50c878','rgba(26,46,10,.12)'],
 };
 
-function openBento(id){
+async function openBento(id){
   if(!S)return;
-  const acc=getAcc(S.handle);
-  const msg=acc.messages.find(m=>m.id===id);
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(S.handle);
+  }else{
+    acc=getAcc(S.handle);
+  }
+  const msg=acc?.messages.find(m=>m.id===id);
   if(!msg)return;
   bId=id; bHandle=S.handle; bTheme='warm';
   document.querySelectorAll('.tsw').forEach(s=>s.classList.toggle('active',s.dataset.t==='warm'));
@@ -539,12 +699,17 @@ function openBento(id){
   document.getElementById('modal').classList.add('show');
 }
 
-function setTheme(t,el){
+async function setTheme(t,el){
   bTheme=t;
   document.querySelectorAll('.tsw').forEach(s=>s.classList.remove('active'));
   el.classList.add('active');
-  const acc=getAcc(bHandle);
-  const msg=acc.messages.find(m=>m.id===bId);
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(bHandle);
+  }else{
+    acc=getAcc(bHandle);
+  }
+  const msg=acc?.messages.find(m=>m.id===bId);
   if(msg) renderCard(msg.text,t);
 }
 

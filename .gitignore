@@ -13,6 +13,15 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Dependencies (if you add any later)
+# Dependencies
 node_modules/
 
+# Database
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local

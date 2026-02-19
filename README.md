@@ -13,34 +13,49 @@ A beautiful, privacy-focused anonymous Q&A platform. Users create a link with a 
 
 ## Quick Start
 
-### Option 1: Simple HTTP Server (Recommended)
+### Option 1: Full Backend Setup (Recommended - Persistent Data)
+
+```bash
+# Install dependencies
+npm install
+
+# Start the server
+npm start
+
+# Server runs on http://localhost:3000
+# Open http://localhost:3000/tellme.html in your browser
+```
+
+The server will:
+- Create a SQLite database (`tellme.db`) automatically
+- Store all accounts and messages persistently
+- Provide API endpoints for the frontend
+
+### Option 2: Frontend Only (LocalStorage Mode)
 
 ```bash
 # Python 3
 python3 -m http.server 8000
 
-# Or Python 2
-python -m SimpleHTTPServer 8000
-
-# Or Node.js (if you have http-server installed)
+# Or Node.js
 npx http-server -p 8000
 ```
 
 Then open `http://localhost:8000/tellme.html` in your browser.
 
-### Option 2: Direct File
+**Note:** Without the backend, data is stored in localStorage only (per-browser).
 
-You can open `tellme.html` directly in your browser, but some features (like routing) work better with a local server.
+### Option 3: Deploy to Production
 
-### Option 3: Deploy Anywhere
+**Backend + Frontend:**
+- Deploy `server.js` to any Node.js hosting (Heroku, Railway, Render, etc.)
+- The server serves the frontend automatically
+- Database persists on the server
 
-Since it's a single HTML file, you can deploy it to:
-- GitHub Pages
-- Netlify
-- Vercel
-- Any static hosting service
-
-Just upload `tellme.html` and rename it to `index.html` if needed.
+**Frontend Only:**
+- Deploy `tellme.html` to static hosting (GitHub Pages, Netlify, Vercel)
+- Rename to `index.html` if needed
+- Works with localStorage fallback
 
 ## How It Works
 
@@ -52,11 +67,16 @@ Just upload `tellme.html` and rename it to `index.html` if needed.
 
 ## Data Storage
 
-All data is stored in the browser's `localStorage`. This means:
-- ✅ No server needed
-- ✅ Complete privacy
-- ⚠️ Data is per-browser/device (not synced across devices)
-- ⚠️ Clearing browser data will delete all accounts
+**Currently using: LocalStorage Mode**
+
+All data is stored in the browser's `localStorage`:
+- ✅ **No server needed** - Works completely offline
+- ✅ **Complete privacy** - All data stays in your browser
+- ✅ **Fast** - Instant access, no network delays
+- ⚠️ **Per-browser/device** - Data is not synced across devices
+- ⚠️ **Browser-specific** - Clearing browser data will delete all accounts
+
+**Note:** Backend mode is available but disabled by default. To enable it, change `USE_API = false` to `USE_API = true` in `tellme.html` and run the server.
 
 ## Customization
 
@@ -77,14 +97,49 @@ Works in all modern browsers that support:
 
 ## Dependencies
 
+### Frontend
 - **Google Fonts** (Syne, DM Sans) - Loaded from CDN
 - **html2canvas** - For generating bento card images (loaded from CDN)
+
+### Backend (if using server)
+- **Express** - Web server framework
+- **SQLite3** - Database for persistent storage
+- **CORS** - Cross-origin resource sharing
+
+Install with: `npm install`
+
+## API Endpoints
+
+When using the backend server:
+
+- `POST /api/register` - Create new account
+- `POST /api/login` - Login with handle and PIN
+- `GET /api/account/:handle` - Get account and messages
+- `POST /api/question` - Send anonymous question
+- `DELETE /api/message/:id` - Delete a message
+- `POST /api/messages/read` - Mark messages as read
+- `GET /api/health` - Health check
+
+## Configuration
+
+Create a `.env` file (optional):
+```env
+PORT=3000
+DB_PATH=/path/to/tellme.db
+```
+
+If not set, defaults to:
+- Port: 3000
+- Database: `tellme.db` in project root
 
 ## Security Notes
 
 - PINs are hashed using a simple hash function (not cryptographically secure)
-- This is a client-side only app - suitable for personal/small-scale use
-- For production use with many users, consider adding a backend
+- For production, consider:
+  - Using stronger password hashing (bcrypt)
+  - Adding rate limiting
+  - Using HTTPS
+  - Implementing proper authentication tokens
 
 ## License
 
