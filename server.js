@@ -160,18 +160,31 @@ app.post('/api/login', (req, res) => {
     return res.status(400).json({ error: 'Handle and PIN required' });
   }
 
+  const normalizedHandle = handle.toLowerCase().trim();
   const pinHash = hashPin(pin);
 
+  // First check if account exists
   getDb().get(
-    'SELECT handle FROM accounts WHERE handle = ? AND pin_hash = ?',
-    [handle.toLowerCase(), pinHash],
+    'SELECT handle, pin_hash FROM accounts WHERE handle = ?',
+    [normalizedHandle],
     (err, row) => {
       if (err) {
-        return res.status(500).json({ error: 'Login failed' });
+        console.error('Database error during login:', err);
+        return res.status(500).json({ error: 'Login failed - database error' });
       }
+      
       if (!row) {
+        console.log(`Login attempt failed: Account not found for handle: ${normalizedHandle}`);
         return res.status(401).json({ error: 'Invalid handle or PIN' });
       }
+
+      // Compare PIN hashes
+      if (row.pin_hash !== pinHash) {
+        console.log(`Login attempt failed: PIN mismatch for handle: ${normalizedHandle}`);
+        return res.status(401).json({ error: 'Invalid handle or PIN' });
+      }
+
+      console.log(`Successful login for handle: ${normalizedHandle}`);
       res.json({ success: true, handle: row.handle });
     }
   );

@@ -484,24 +484,27 @@ async function register(){
   if(!handle||handle.length<2){err.textContent='Handle must be at least 2 characters.';return;}
   if(!/^\d{4}$/.test(pin)){err.textContent='Enter a 4-digit PIN.';return;}
   
-  if(USE_API){
+  // Always try API first if BACKEND_URL is configured
+  if(BACKEND_URL || USE_API){
     try{
       await apiRegister(handle,pin);
       // Also save locally as backup
-      putAcc(handle,{handle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
-      S={handle};
+      putAcc(handle.toLowerCase(),{handle:handle.toLowerCase(),pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
+      S={handle:handle.toLowerCase()};
       refreshNav();
       await renderDash();
       show('dash');
       toast('Link created! Share it 🎉');
     }catch(e){
       err.textContent=e.message||'Registration failed. Try again.';
+      console.error('Registration error:',e);
     }
   }else{
     // Fallback to localStorage
-    if(getAcc(handle)){err.textContent='@'+handle+' is taken. Try another handle or log in.';return;}
-    putAcc(handle,{handle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
-    S={handle};
+    const normalizedHandle=handle.toLowerCase();
+    if(getAcc(normalizedHandle)){err.textContent='@'+normalizedHandle+' is taken. Try another handle or log in.';return;}
+    putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
+    S={handle:normalizedHandle};
     refreshNav();
     renderDash();
     show('dash');
@@ -518,23 +521,27 @@ async function login(){
   if(!handle){err.textContent='Enter your handle.';return;}
   if(pin.length!==4){err.textContent='Enter your 4-digit PIN.';return;}
   
-  if(USE_API){
+  const normalizedHandle=handle.toLowerCase();
+  
+  // Always try API first if BACKEND_URL is configured
+  if(BACKEND_URL || USE_API){
     try{
-      await apiLogin(handle,pin);
-      S={handle};
+      await apiLogin(normalizedHandle,pin);
+      S={handle:normalizedHandle};
       refreshNav();
       await renderDash();
       show('dash');
       clearLogin();
     }catch(e){
       err.textContent=e.message||'Login failed. Check your handle and PIN.';
+      console.error('Login error:',e);
     }
   }else{
     // Fallback to localStorage
-    const acc=getAcc(handle);
-    if(!acc){err.textContent='No account found for @'+handle+'. Check your handle.';return;}
+    const acc=getAcc(normalizedHandle);
+    if(!acc){err.textContent='No account found for @'+normalizedHandle+'. Check your handle.';return;}
     if(acc.pinHash!==hashPin(pin)){err.textContent='Wrong PIN. Try again.';return;}
-    S={handle};
+    S={handle:normalizedHandle};
     refreshNav();
     renderDash();
     show('dash');
