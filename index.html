@@ -592,11 +592,29 @@ async function register(){
   const handle=document.getElementById('rHandle').value.trim();
   const pin=getPin('rp');
   const err=document.getElementById('rErr');
+  const btn=document.querySelector('button[onclick="register()"]');
+  
   err.textContent='';
-  if(!handle||handle.length<2){err.textContent='Handle must be at least 2 characters.';return;}
-  if(!/^\d{4}$/.test(pin)){err.textContent='Enter a 4-digit PIN.';return;}
+  err.style.color='';
+  
+  if(!handle||handle.length<2){
+    err.textContent='Handle must be at least 2 characters.';
+    err.style.color='var(--danger)';
+    return;
+  }
+  if(!/^\d{4}$/.test(pin)){
+    err.textContent='Enter a 4-digit PIN.';
+    err.style.color='var(--danger)';
+    return;
+  }
   
   const normalizedHandle=handle.toLowerCase();
+  
+  // Disable button during registration
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='Creating...';
+  }
   
   // Always use Supabase when configured
   if(USE_SUPABASE){
@@ -618,18 +636,42 @@ async function register(){
       const accs=allAccs();
       delete accs[normalizedHandle];
       saveAll(accs);
-      err.textContent=e.message||'Registration failed. Try again.';
+      err.textContent=e.message||'Registration failed. Check console for details.';
+      err.style.color='var(--danger)';
       console.error('Registration error:',e);
+      // Re-enable button
+      if(btn){
+        btn.disabled=false;
+        btn.textContent='Create my link →';
+      }
     }
   }else{
     // Fallback to localStorage only
-    if(getAcc(normalizedHandle)){err.textContent='@'+normalizedHandle+' is taken. Try another handle or log in.';return;}
-    putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
-    S={handle:normalizedHandle};
-    refreshNav();
-    renderDash();
-    show('dash');
-    toast('Link created! Share it 🎉');
+    try{
+      if(getAcc(normalizedHandle)){
+        err.textContent='@'+normalizedHandle+' is taken. Try another handle or log in.';
+        err.style.color='var(--danger)';
+        if(btn){
+          btn.disabled=false;
+          btn.textContent='Create my link →';
+        }
+        return;
+      }
+      putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
+      S={handle:normalizedHandle};
+      refreshNav();
+      renderDash();
+      show('dash');
+      toast('Link created! Share it 🎉');
+    }catch(e){
+      err.textContent='Registration failed: '+e.message;
+      err.style.color='var(--danger)';
+      console.error('Registration error:',e);
+      if(btn){
+        btn.disabled=false;
+        btn.textContent='Create my link →';
+      }
+    }
   }
 }
 
@@ -958,14 +1000,37 @@ function toast(msg){
 /* ====== PIN WIRING ====== */
 function wirePins(){
   document.querySelectorAll('.pin-box').forEach((el,i,all)=>{
-    el.addEventListener('input',()=>{
-      el.value=el.value.replace(/\D/g,'').slice(0,1);
-      if(el.value&&i<all.length-1) all[i+1].focus();
+    el.addEventListener('input',(e)=>{
+      el.value=e.target.value.replace(/\D/g,'').slice(0,1);
+      if(el.value&&i<all.length-1){
+        setTimeout(()=>all[i+1].focus(),10);
+      }
       // auto-login on last login pin
-      if(el.id==='lp3'&&el.value) login();
+      if(el.id==='lp3'&&el.value) setTimeout(()=>login(),100);
     });
     el.addEventListener('keydown',e=>{
-      if(e.key==='Backspace'&&!el.value&&i>0) all[i-1].focus();
+      if(e.key==='Backspace'&&!el.value&&i>0){
+        e.preventDefault();
+        all[i-1].focus();
+      }
+      // Allow arrow keys
+      if(e.key==='ArrowLeft'&&i>0){
+        e.preventDefault();
+        all[i-1].focus();
+      }
+      if(e.key==='ArrowRight'&&i<all.length-1){
+        e.preventDefault();
+        all[i+1].focus();
+      }
+    });
+    el.addEventListener('paste',e=>{
+      e.preventDefault();
+      const pasted=e.clipboardData.getData('text').replace(/\D/g,'').slice(0,4);
+      pasted.split('').forEach((char,idx)=>{
+        if(i+idx<all.length) all[i+idx].value=char;
+      });
+      if(i+pasted.length<all.length) all[i+pasted.length].focus();
+      else all[all.length-1].focus();
     });
   });
 }
