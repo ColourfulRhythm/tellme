@@ -646,14 +646,27 @@ function resetAsk(){
 function previewAsk(){ if(S) loadAsk(S.handle); }
 
 /* ====== DASHBOARD ====== */
-async function renderDash(){
+let dashRefreshInterval=null;
+
+async function renderDash(showLoading=false){
   if(!S)return;
+  const btn=document.getElementById('refreshBtn');
+  if(btn) btn.style.opacity='0.6';
+  
   let acc=null;
-  if(USE_API){
-    acc=await apiGetAccount(S.handle);
+  // Always try API first if BACKEND_URL is configured
+  if(BACKEND_URL || USE_API){
+    try{
+      acc=await apiGetAccount(S.handle);
+    }catch(e){
+      console.error('Failed to fetch account:',e);
+      // Fallback to localStorage
+      acc=getAcc(S.handle);
+    }
   }else{
     acc=getAcc(S.handle);
   }
+  
   if(!acc)return;
   const msgs=acc.messages||[];
   const nw=msgs.filter(m=>m.isNew).length;
@@ -667,6 +680,7 @@ async function renderDash(){
   const g=document.getElementById('grid');
   if(!msgs.length){
     g.innerHTML=`<div class="empty"><div class="ei">💌</div><h3>No questions yet</h3><p>Copy your link and share it anywhere.</p></div>`;
+    if(btn) btn.style.opacity='1';
     return;
   }
   g.innerHTML=msgs.map(m=>`
@@ -679,9 +693,11 @@ async function renderDash(){
       </div>
     </div>`).join('');
 
+  if(btn) btn.style.opacity='1';
+
   // Mark as read after 2s
   setTimeout(async ()=>{
-    if(USE_API){
+    if(BACKEND_URL || USE_API){
       await apiMarkRead(S.handle);
     }else{
       const a=getAcc(S.handle);
@@ -698,9 +714,36 @@ async function renderDash(){
   },2000);
 }
 
+function refreshDash(){
+  renderDash(true);
+  toast('Refreshing...');
+}
+
+function startDashAutoRefresh(){
+  // Clear any existing interval
+  if(dashRefreshInterval) clearInterval(dashRefreshInterval);
+  
+  // Only auto-refresh if using API (backend)
+  if(BACKEND_URL || USE_API){
+    // Refresh every 8 seconds
+    dashRefreshInterval=setInterval(()=>{
+      if(S && document.getElementById('view-dash').classList.contains('active')){
+        renderDash();
+      }
+    },8000);
+  }
+}
+
+function stopDashAutoRefresh(){
+  if(dashRefreshInterval){
+    clearInterval(dashRefreshInterval);
+    dashRefreshInterval=null;
+  }
+}
+
 async function delMsg(id){
   if(!S)return;
-  if(USE_API){
+  if(BACKEND_URL || USE_API){
     try{
       await apiDeleteMessage(id,S.handle);
       await renderDash();
