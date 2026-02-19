@@ -98,6 +98,7 @@
   .lurl{flex:1;font-size:14px;color:var(--accent);word-break:break-all;}
   .sm{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 14px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;transition:all .2s;white-space:nowrap;}
   .sm:hover{border-color:var(--accent);color:var(--accent);}
+  .sm:active{transform:scale(0.98);}
 
   .stats{display:flex;gap:10px;margin-bottom:26px;flex-wrap:wrap;}
   .sp{background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:8px 18px;font-size:13px;color:var(--muted);}
@@ -273,7 +274,10 @@
         <h2 id="dTitle">Inbox</h2>
         <p id="dSub">anonymous questions</p>
       </div>
-      <button class="lout" onclick="logout()">Log out</button>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="sm" onclick="refreshDash()" id="refreshBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">↻ Refresh</button>
+        <button class="lout" onclick="logout()">Log out</button>
+      </div>
     </div>
 
     <div class="lbox">
@@ -454,7 +458,11 @@ function refreshNav(){
   }
 }
 
-function openDash(){ renderDash(); show('dash'); }
+function openDash(){ 
+  renderDash(); 
+  show('dash'); 
+  startDashAutoRefresh();
+}
 
 /* ====== PIN HELPERS ====== */
 function cleanHandle(el){ el.value=el.value.toLowerCase().replace(/[^a-z0-9_]/g,''); }
