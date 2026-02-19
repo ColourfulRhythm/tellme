@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👂</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c28;
@@ -338,18 +338,26 @@ const SUPABASE_ANON_KEY = 'ENV_SUPABASE_ANON_KEY';
 let supabaseClient = null;
 let USE_SUPABASE = false;
 
-if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== 'ENV_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' && SUPABASE_ANON_KEY !== 'ENV_SUPABASE_ANON_KEY') {
-  if (window.supabase) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    USE_SUPABASE = true;
-    console.log('✅ Supabase connected - data will persist');
+// Initialize Supabase after library loads
+function initSupabase(){
+  if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== 'ENV_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' && SUPABASE_ANON_KEY !== 'ENV_SUPABASE_ANON_KEY') {
+    if (window.supabase) {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      USE_SUPABASE = true;
+      console.log('✅ Supabase connected - data will persist');
+    } else {
+      console.error('❌ Supabase library not loaded - retrying...');
+      // Retry after a short delay
+      setTimeout(initSupabase, 500);
+    }
   } else {
-    console.error('❌ Supabase library not loaded');
+    console.log('ℹ️ Supabase not configured - using localStorage mode');
+    console.log('⚠️ Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables');
   }
-} else {
-  console.log('ℹ️ Supabase not configured - using localStorage mode');
-  console.log('⚠️ Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables');
 }
+
+// Try to initialize immediately, and also on DOMContentLoaded
+initSupabase();
 
 /* ====== SUPABASE FUNCTIONS ====== */
 async function apiRegister(handle,pin){
@@ -563,6 +571,27 @@ function refreshNav(){
   } else {
     n.innerHTML=`<div class="nav-pill" onclick="showLoginView()">Log in</div>
     <div class="nav-pill hi" onclick="scrollCreate()">Create link →</div>`;
+  }
+}
+
+// Auto-refresh variables
+let dashRefreshInterval = null;
+
+function startDashAutoRefresh(){
+  // Clear any existing interval
+  if(dashRefreshInterval) clearInterval(dashRefreshInterval);
+  // Refresh dashboard every 8 seconds
+  dashRefreshInterval = setInterval(async ()=>{
+    if(S && document.getElementById('view-dash')?.classList.contains('active')){
+      await renderDash();
+    }
+  }, 8000);
+}
+
+function stopDashAutoRefresh(){
+  if(dashRefreshInterval){
+    clearInterval(dashRefreshInterval);
+    dashRefreshInterval = null;
   }
 }
 
@@ -1054,7 +1083,11 @@ function route(){
 }
 
 window.addEventListener('hashchange',route);
-window.addEventListener('DOMContentLoaded',()=>{ wirePins(); route(); });
+window.addEventListener('DOMContentLoaded',()=>{ 
+  initSupabase(); // Try again after DOM loads
+  wirePins(); 
+  route(); 
+});
 </script>
 </div>
 </body>
