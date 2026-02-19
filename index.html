@@ -486,6 +486,40 @@ function clearLogin(){
   document.getElementById('lErr').textContent='';
 }
 
+function clearLocalData(){
+  const handle=document.getElementById('lHandle').value.trim().toLowerCase();
+  if(handle){
+    const accs=allAccs();
+    if(accs[handle]){
+      delete accs[handle];
+      saveAll(accs);
+      toast('Local cache cleared for @'+handle);
+      document.getElementById('lErr').textContent='';
+      document.getElementById('lErr').style.color='var(--accent)';
+      document.getElementById('lErr').textContent='✓ Local cache cleared. Try logging in again.';
+      setTimeout(()=>{
+        document.getElementById('lErr').textContent='';
+        document.getElementById('lErr').style.color='var(--danger)';
+      },3000);
+    }else{
+      toast('No local data found for @'+handle);
+    }
+  }else{
+    // Clear all localStorage data
+    if(confirm('Clear ALL local account data? This will remove all cached accounts from this browser.')){
+      localStorage.removeItem(KEY);
+      toast('All local data cleared');
+      document.getElementById('lErr').textContent='';
+      document.getElementById('lErr').style.color='var(--accent)';
+      document.getElementById('lErr').textContent='✓ All local data cleared.';
+      setTimeout(()=>{
+        document.getElementById('lErr').textContent='';
+        document.getElementById('lErr').style.color='var(--danger)';
+      },3000);
+    }
+  }
+}
+
 /* ====== REGISTER ====== */
 async function register(){
   const handle=document.getElementById('rHandle').value.trim();
