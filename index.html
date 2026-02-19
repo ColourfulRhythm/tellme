@@ -347,8 +347,16 @@ async function apiRegister(handle,pin){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({handle,pin})
     });
+    if(!res.ok){
+      const text=await res.text();
+      let error='Registration failed';
+      try{
+        const data=JSON.parse(text);
+        error=data.error||error;
+      }catch{}
+      throw new Error(error);
+    }
     const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Registration failed');
     return {success:true};
   }catch(e){throw e;}
 }
