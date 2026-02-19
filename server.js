@@ -97,28 +97,56 @@ function hashPin(pin) {
 app.post('/api/register', (req, res) => {
   const { handle, pin } = req.body;
 
+  // Validate handle
   if (!handle || handle.length < 2) {
     return res.status(400).json({ error: 'Handle must be at least 2 characters' });
   }
+  
+  if (handle.length > 20) {
+    return res.status(400).json({ error: 'Handle must be 20 characters or less' });
+  }
+  
+  // Validate handle format (letters, numbers, underscores only)
+  if (!/^[a-z0-9_]+$/.test(handle.toLowerCase())) {
+    return res.status(400).json({ error: 'Handle can only contain letters, numbers, and underscores' });
+  }
 
+  // Validate PIN
   if (!/^\d{4}$/.test(pin)) {
     return res.status(400).json({ error: 'PIN must be 4 digits' });
   }
 
+  const normalizedHandle = handle.toLowerCase().trim();
   const pinHash = hashPin(pin);
   const createdAt = Date.now();
 
-  getDb().run(
-    'INSERT INTO accounts (handle, pin_hash, created_at) VALUES (?, ?, ?)',
-    [handle.toLowerCase(), pinHash, createdAt],
-    function(err) {
+  // Check if handle already exists
+  getDb().get(
+    'SELECT handle FROM accounts WHERE handle = ?',
+    [normalizedHandle],
+    (err, row) => {
       if (err) {
-        if (err.message.includes('UNIQUE constraint')) {
-          return res.status(409).json({ error: `@${handle} is already taken` });
-        }
-        return res.status(500).json({ error: 'Failed to create account' });
+        return res.status(500).json({ error: 'Failed to check handle availability' });
       }
-      res.json({ success: true, handle: handle.toLowerCase() });
+      
+      if (row) {
+        return res.status(409).json({ error: `@${normalizedHandle} is already taken` });
+      }
+
+      // Create account
+      getDb().run(
+        'INSERT INTO accounts (handle, pin_hash, created_at) VALUES (?, ?, ?)',
+        [normalizedHandle, pinHash, createdAt],
+        function(err) {
+          if (err) {
+            if (err.message.includes('UNIQUE constraint')) {
+              return res.status(409).json({ error: `@${normalizedHandle} is already taken` });
+            }
+            return res.status(500).json({ error: 'Failed to create account' });
+          }
+          res.json({ success: true, handle: normalizedHandle });
+        }
+      );
     }
   );
 });
