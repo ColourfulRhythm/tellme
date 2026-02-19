@@ -1130,6 +1130,16 @@ function route(){
   if(S) refreshNav();
 }
 
+// Check hash immediately to prevent flash of home page
+(function checkHashImmediately(){
+  const h=location.hash;
+  if(h.startsWith('#/u/') || h==='#/login'){
+    // Hide home view immediately if we have a hash route
+    const homeView=document.getElementById('view-home');
+    if(homeView) homeView.classList.remove('active');
+  }
+})();
+
 window.addEventListener('hashchange',route);
 window.addEventListener('DOMContentLoaded',()=>{ 
   initSupabase(); // Try again after DOM loads
