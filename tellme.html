@@ -835,8 +835,11 @@ function wirePins(){
 function route(){
   const h=location.hash;
   if(h.startsWith('#/u/')){
-    const handle=h.slice(4).split('?')[0];
-    if(handle){ loadAsk(handle); return; }
+    const handle=h.slice(4).split('?')[0].trim();
+    if(handle){ 
+      loadAsk(handle); 
+      return; 
+    }
   }
   if(h==='#/login'){ showLoginView(); return; }
   if(S) refreshNav();
