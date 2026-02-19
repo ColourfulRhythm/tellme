@@ -546,12 +546,22 @@ async function login(){
   if(BACKEND_URL || USE_API){
     try{
       await apiLogin(normalizedHandle,pin);
+      // Login successful - sync localStorage with database
+      const acc=await apiGetAccount(normalizedHandle);
+      if(acc){
+        // Update localStorage with fresh data from database
+        putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:acc.messages||[],createdAt:acc.createdAt||Date.now()});
+      }
       S={handle:normalizedHandle};
       refreshNav();
       await renderDash();
       show('dash');
       clearLogin();
     }catch(e){
+      // Login failed - clear any stale localStorage data
+      const accs=allAccs();
+      delete accs[normalizedHandle];
+      saveAll(accs);
       err.textContent=e.message||'Login failed. Check your handle and PIN.';
       console.error('Login error:',e);
     }
