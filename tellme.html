@@ -553,6 +553,28 @@ function putAcc(h,d){ const a=allAccs(); a[h]=d; saveAll(a); }
 
 /* ====== SESSION ====== */
 let S = null; // {handle}
+const SESSION_KEY = 'tm_session';
+
+function saveSession(){
+  if(S){
+    localStorage.setItem(SESSION_KEY,JSON.stringify(S));
+  }else{
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
+
+function restoreSession(){
+  try{
+    const saved=localStorage.getItem(SESSION_KEY);
+    if(saved){
+      S=JSON.parse(saved);
+      refreshNav();
+    }
+  }catch(e){
+    console.error('Error restoring session:',e);
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
 
 /* ====== VIEWS ====== */
 function show(id){
@@ -601,6 +623,28 @@ function openDash(){
   renderDash(); 
   show('dash'); 
   startDashAutoRefresh();
+}
+
+async function refreshDash(){
+  if(!S)return;
+  const btn=document.getElementById('refreshBtn');
+  const originalText=btn?.textContent;
+  if(btn){
+    btn.textContent='↻ Refreshing...';
+    btn.disabled=true;
+  }
+  try{
+    await renderDash();
+    toast('Refreshed!');
+  }catch(e){
+    console.error('Refresh error:',e);
+    toast('Refresh failed');
+  }finally{
+    if(btn){
+      btn.textContent=originalText;
+      btn.disabled=false;
+    }
+  }
 }
 
 /* ====== PIN HELPERS ====== */
@@ -662,6 +706,7 @@ async function register(){
       saveAll(accs);
       putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
       S={handle:normalizedHandle};
+      saveSession();
       refreshNav();
       await renderDash();
       show('dash');
@@ -694,10 +739,11 @@ async function register(){
       }
       putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
       S={handle:normalizedHandle};
-  refreshNav();
-  renderDash();
-  show('dash');
-  toast('Link created! Share it 🎉');
+      saveSession();
+      refreshNav();
+      renderDash();
+      show('dash');
+      toast('Link created! Share it 🎉');
     }catch(e){
       err.textContent='Registration failed: '+e.message;
       err.style.color='var(--danger)';
@@ -732,6 +778,7 @@ async function login(){
         putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:acc.messages||[],createdAt:acc.createdAt||Date.now()});
       }
       S={handle:normalizedHandle};
+      saveSession();
       refreshNav();
       await renderDash();
       show('dash');
@@ -751,14 +798,15 @@ async function login(){
     if(!acc){err.textContent='No account found for @'+normalizedHandle+'. Check your handle.';return;}
   if(acc.pinHash!==hashPin(pin)){err.textContent='Wrong PIN. Try again.';return;}
     S={handle:normalizedHandle};
-  refreshNav();
-  renderDash();
-  show('dash');
-  clearLogin();
+    saveSession();
+    refreshNav();
+    renderDash();
+    show('dash');
+    clearLogin();
   }
 }
 
-function logout(){ S=null; refreshNav(); goHome(); toast('Logged out'); }
+function logout(){ S=null; saveSession(); refreshNav(); goHome(); toast('Logged out'); }
 
 /* ====== ASK PAGE ====== */
 let askTarget=null;
@@ -973,7 +1021,7 @@ function renderCard(text,t){
         <div class="blab">🔒 anonymous question</div>
         <div class="bq"><span class="bqm">"</span>${esc(text)}"</div>
         <div class="bf">
-          <div class="bbrand">tellme<em>${window.location.hostname ? '.' + window.location.hostname : ''}</em></div>
+          <div class="bbrand">tellme.adparlay.com</div>
           <div class="bdots">
             <div class="bdot" style="background:${d[0]}"></div>
             <div class="bdot" style="background:${d[1]}"></div>
@@ -1031,18 +1079,111 @@ function downloadCard(){
       ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);
       ctx.closePath();ctx.clip();
       ctx.drawImage(canvas,0,0);
-      const a=document.createElement('a');
-      a.download='tellme-'+bHandle+'-'+Date.now()+'.jpg';
-      a.href=out.toDataURL('image/jpeg',.95);
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      toast('Card downloaded! 🎉');
-      closeModal();
+      
+      // Detect iOS devices
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      
+      const fileName='tellme-'+bHandle+'-'+Date.now()+'.jpg';
+      
+      // For iOS: Use Web Share API with blob to save to Photos
+      if(isIOS && navigator.share){
+        // Convert to blob for iOS share
+        out.toBlob(function(blob){
+          if(!blob){
+            toast('Error creating image file');
+            if(btn){
+              btn.textContent=originalText;
+              btn.disabled=false;
+            }
+            return;
+          }
+          
+          const file=new File([blob],fileName,{type:'image/jpeg'});
+          
+          // Try Web Share API first (allows saving to Photos)
+          if(navigator.canShare && navigator.canShare({files:[file]})){
+            navigator.share({
+              files:[file],
+              title:'TellMe Bento Card'
+            }).then(()=>{
+              toast('Saved! Check Photos (or Files app) 🎉');
+              closeModal();
+              if(btn){
+                btn.textContent=originalText;
+                btn.disabled=false;
+              }
+            }).catch(err=>{
+              // User cancelled or share failed
+              if(err.name!=='AbortError'){
+                console.log('Share failed, using fallback:',err);
+                // Fallback: open data URL in new tab (user can long-press to save)
+                const dataUrl=out.toDataURL('image/jpeg',.95);
+                const newWindow=window.open();
+                if(newWindow){
+                  newWindow.document.write(`<html><body style="margin:0;padding:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${dataUrl}" style="max-width:100%;max-height:100%;" /></body></html>`);
+                  toast('Tap & hold image to save (check Files app if not in Photos)');
+                }else{
+                  downloadAsFile(blob,fileName);
+                }
+              }
+              if(btn){
+                btn.textContent=originalText;
+                btn.disabled=false;
+              }
+            });
+          }else{
+            // Fallback for iOS if canShare not available
+            const dataUrl=out.toDataURL('image/jpeg',.95);
+            const newWindow=window.open();
+            if(newWindow){
+              newWindow.document.write(`<html><body style="margin:0;padding:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${dataUrl}" style="max-width:100%;max-height:100%;" /></body></html>`);
+              toast('Tap & hold image to save to Photos');
+            }else{
+              downloadAsFile(blob,fileName);
+            }
+            if(btn){
+              btn.textContent=originalText;
+              btn.disabled=false;
+            }
+          }
+        },'image/jpeg',.95);
+      }else{
+        // For Android and desktop: Use toDataURL directly (faster)
+        const dataUrl=out.toDataURL('image/jpeg',.95);
+        const a=document.createElement('a');
+        a.download=fileName;
+        a.href=dataUrl;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast('Card downloaded! 🎉');
+        closeModal();
+        if(btn){
+          btn.textContent=originalText;
+          btn.disabled=false;
+        }
+      }
+      
+      function downloadAsFile(blob,fileName){
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.download=fileName;
+        a.href=url;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(url),100);
+        toast('Card downloaded! 🎉');
+        closeModal();
+        if(btn){
+          btn.textContent=originalText;
+          btn.disabled=false;
+        }
+      }
     }catch(e){
       console.error('Error creating download:',e);
       toast('Error downloading card: '+e.message);
-    }finally{
       if(btn){
         btn.textContent=originalText;
         btn.disabled=false;
@@ -1145,8 +1286,13 @@ function route(){
 window.addEventListener('hashchange',route);
 window.addEventListener('DOMContentLoaded',()=>{ 
   initSupabase(); // Try again after DOM loads
+  restoreSession(); // Restore session from localStorage
   wirePins(); 
   route(); 
+  // If session exists and we're on home page (no hash), show dashboard
+  if(S && !location.hash){
+    openDash();
+  }
 });
 </script>
 </div>

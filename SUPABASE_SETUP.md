@@ -32,7 +32,7 @@ This guide will walk you through setting up Supabase as your database backend fo
 
 1. In your Supabase project dashboard, go to **Settings** (gear icon) → **API**
 2. You'll see two important values:
-   - **Project URL**: `https://xxxxx.supabase.co`
+   - **Project URL**: `https://yakzsrkwhlwwdkonlzem.supabase.co`
    - **anon/public key**: A long string starting with `eyJ...`
 3. **Copy both values** - you'll need them in the next step
 
