@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👂</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c28;
@@ -279,7 +279,7 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <button class="sm" onclick="refreshDash()" id="refreshBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">↻ Refresh</button>
-        <button class="lout" onclick="logout()">Log out</button>
+      <button class="lout" onclick="logout()">Log out</button>
       </div>
     </div>
 
@@ -692,10 +692,10 @@ async function register(){
       }
       putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
       S={handle:normalizedHandle};
-      refreshNav();
-      renderDash();
-      show('dash');
-      toast('Link created! Share it 🎉');
+  refreshNav();
+  renderDash();
+  show('dash');
+  toast('Link created! Share it 🎉');
     }catch(e){
       err.textContent='Registration failed: '+e.message;
       err.style.color='var(--danger)';
@@ -747,12 +747,12 @@ async function login(){
     // Fallback to localStorage only
     const acc=getAcc(normalizedHandle);
     if(!acc){err.textContent='No account found for @'+normalizedHandle+'. Check your handle.';return;}
-    if(acc.pinHash!==hashPin(pin)){err.textContent='Wrong PIN. Try again.';return;}
+  if(acc.pinHash!==hashPin(pin)){err.textContent='Wrong PIN. Try again.';return;}
     S={handle:normalizedHandle};
-    refreshNav();
-    renderDash();
-    show('dash');
-    clearLogin();
+  refreshNav();
+  renderDash();
+  show('dash');
+  clearLogin();
   }
 }
 
@@ -819,19 +819,19 @@ async function sendQ(){
     }
   }else{
     // Fallback to localStorage
-    const acc=getAcc(askTarget);
-    if(!acc)return;
-    acc.messages=acc.messages||[];
-    const now=new Date();
-    acc.messages.unshift({
-      id:Date.now(),text:txt,
-      time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-      date:now.toLocaleDateString([],{month:'short',day:'numeric'}),
-      isNew:true
-    });
-    putAcc(askTarget,acc);
-    document.getElementById('askForm').style.display='none';
-    document.getElementById('sentBox').style.display='block';
+  const acc=getAcc(askTarget);
+  if(!acc)return;
+  acc.messages=acc.messages||[];
+  const now=new Date();
+  acc.messages.unshift({
+    id:Date.now(),text:txt,
+    time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+    date:now.toLocaleDateString([],{month:'short',day:'numeric'}),
+    isNew:true
+  });
+  putAcc(askTarget,acc);
+  document.getElementById('askForm').style.display='none';
+  document.getElementById('sentBox').style.display='block';
   }
 }
 
@@ -883,10 +883,10 @@ async function renderDash(){
     if(USE_SUPABASE){
       await apiMarkRead(S.handle);
     }else{
-      const a=getAcc(S.handle);
-      if(!a)return;
-      a.messages.forEach(m=>m.isNew=false);
-      putAcc(S.handle,a);
+    const a=getAcc(S.handle);
+    if(!a)return;
+    a.messages.forEach(m=>m.isNew=false);
+    putAcc(S.handle,a);
     }
     document.querySelectorAll('.mc.isnew').forEach(el=>{
       el.classList.remove('isnew');
@@ -907,10 +907,10 @@ async function delMsg(id){
       alert('Failed to delete message: '+(e.message||'Unknown error'));
     }
   }else{
-    const acc=getAcc(S.handle);
-    acc.messages=acc.messages.filter(m=>m.id!==id);
-    putAcc(S.handle,acc);
-    renderDash();
+  const acc=getAcc(S.handle);
+  acc.messages=acc.messages.filter(m=>m.id!==id);
+  putAcc(S.handle,acc);
+  renderDash();
   }
 }
 
@@ -936,7 +936,7 @@ const dots={
 async function openBento(id){
   if(!S)return;
   let acc=null;
-  if(USE_API){
+  if(USE_SUPABASE){
     acc=await apiGetAccount(S.handle);
   }else{
     acc=getAcc(S.handle);
@@ -954,7 +954,7 @@ async function setTheme(t,el){
   document.querySelectorAll('.tsw').forEach(s=>s.classList.remove('active'));
   el.classList.add('active');
   let acc=null;
-  if(USE_API){
+  if(USE_SUPABASE){
     acc=await apiGetAccount(bHandle);
   }else{
     acc=getAcc(bHandle);
