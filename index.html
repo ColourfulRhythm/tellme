@@ -531,16 +531,15 @@ async function register(){
   
   const normalizedHandle=handle.toLowerCase();
   
-  // Always try API first if BACKEND_URL is configured
+  // Always use Render database when BACKEND_URL is configured
   if(BACKEND_URL || USE_API){
     try{
+      // Register in Render database (source of truth)
       await apiRegister(handle,pin);
-      // Only save locally AFTER successful API registration
-      // Clear any old localStorage data for this handle first
+      // Registration successful - update localStorage cache
       const accs=allAccs();
       delete accs[normalizedHandle];
       saveAll(accs);
-      // Now save fresh data
       putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
       S={handle:normalizedHandle};
       refreshNav();
@@ -548,8 +547,7 @@ async function register(){
       show('dash');
       toast('Link created! Share it 🎉');
     }catch(e){
-      // Registration failed - don't save anything
-      // Clear any stale localStorage data for this handle
+      // Registration failed - clear any stale cache
       const accs=allAccs();
       delete accs[normalizedHandle];
       saveAll(accs);
@@ -579,14 +577,14 @@ async function login(){
   
   const normalizedHandle=handle.toLowerCase();
   
-  // Always try API first if BACKEND_URL is configured
+  // Always use Render database when BACKEND_URL is configured
   if(BACKEND_URL || USE_API){
     try{
+      // Login against Render database (source of truth)
       await apiLogin(normalizedHandle,pin);
-      // Login successful - sync localStorage with database
+      // Login successful - update localStorage cache with fresh data from database
       const acc=await apiGetAccount(normalizedHandle);
       if(acc){
-        // Update localStorage with fresh data from database
         putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:acc.messages||[],createdAt:acc.createdAt||Date.now()});
       }
       S={handle:normalizedHandle};
@@ -595,7 +593,8 @@ async function login(){
       show('dash');
       clearLogin();
     }catch(e){
-      // Login failed - clear any stale localStorage data
+      // Login failed - Render database is source of truth
+      // Clear any stale localStorage cache (it's just a cache, database is real)
       const accs=allAccs();
       delete accs[normalizedHandle];
       saveAll(accs);
