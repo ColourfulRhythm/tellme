@@ -1,33 +1,13 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/server.js"
-    },
-    {
       "source": "/",
-      "destination": "/tellme.html"
+      "destination": "/index.html"
     },
     {
-      "source": "/tellme.html",
-      "destination": "/tellme.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

@@ -22,6 +22,9 @@ node_modules/
 *.sqlite
 *.sqlite3
 
+# Vercel
+.vercel
+
 # Environment variables
 .env
 .env.local

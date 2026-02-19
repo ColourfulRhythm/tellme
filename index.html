@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TellMe — Anonymous Questions</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c28;
+    --border:rgba(255,255,255,0.07);--accent:#c8f564;--accent2:#7c6aff;
+    --text:#f0f0f5;--muted:#6b6b80;--danger:#ff6b6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4;}
+  .app{position:relative;z-index:1;}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;background:rgba(10,10,15,.88);backdrop-filter:blur(20px);}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.5px;cursor:pointer;}
+  .logo span{color:var(--accent);}
+  .nav-right{display:flex;gap:10px;align-items:center;}
+  .nav-pill{background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .2s;}
+  .nav-pill:hover{border-color:var(--accent);color:var(--accent);}
+  .nav-pill.hi{background:var(--accent);color:#0a0a0f;border-color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;}
+  .nav-pill.hi:hover{background:#d4f97a;}
+
+  .view{display:none;animation:fi .22s ease;}
+  .view.active{display:block;}
+  @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+  /* HOME */
+  .hero{max-width:580px;margin:0 auto;padding:88px 24px 56px;text-align:center;}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(200,245,100,.1);border:1px solid rgba(200,245,100,.25);border-radius:100px;padding:4px 14px;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1px;margin-bottom:26px;text-transform:uppercase;}
+  .hero h1{font-family:'Syne',sans-serif;font-size:clamp(42px,9vw,74px);font-weight:800;line-height:1;letter-spacing:-3px;margin-bottom:20px;}
+  .hero h1 em{color:var(--accent);font-style:normal;}
+  .hero p{font-size:16px;line-height:1.7;color:var(--muted);max-width:400px;margin:0 auto 44px;}
+
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:28px;max-width:420px;margin:0 auto 28px;}
+  .box h3{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:20px;}
+  .field{margin-bottom:15px;}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:7px;}
+  .field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s;}
+  .field input:focus{border-color:var(--accent);}
+  .field input::placeholder{color:var(--muted);}
+  .hint{font-size:12px;color:var(--muted);margin-top:5px;}
+  .pin-row{display:flex;gap:8px;}
+  .pin-box{width:52px!important;height:52px;text-align:center;font-family:'Syne',sans-serif;font-size:22px;font-weight:800;padding:0!important;border-radius:12px!important;}
+  .err{font-size:13px;color:var(--danger);margin-top:10px;text-align:center;min-height:18px;}
+  .btn{width:100%;background:var(--accent);color:#0a0a0f;border:none;border-radius:13px;padding:13px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:all .2s;margin-top:6px;letter-spacing:-.2px;}
+  .btn:hover{background:#d4f97a;transform:translateY(-1px);}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);font-family:'DM Sans',sans-serif;font-weight:500;}
+  .btn.ghost:hover{border-color:var(--accent2);color:var(--text);background:transparent;transform:none;}
+  .divider{text-align:center;color:var(--muted);font-size:13px;margin:14px 0;}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:700px;margin:0 auto 80px;padding:0 24px;}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px 18px;text-align:center;transition:border-color .2s;}
+  .step:hover{border-color:rgba(200,245,100,.25);}
+  .sn{width:34px;height:34px;border-radius:9px;background:rgba(200,245,100,.1);border:1px solid rgba(200,245,100,.2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;color:var(--accent);margin:0 auto 12px;}
+  .step h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:5px;}
+  .step p{font-size:13px;color:var(--muted);line-height:1.5;}
+
+  /* CENTER WRAP */
+  .cview{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:24px;}
+  .acard{background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:36px;max-width:400px;width:100%;}
+  .acard h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:5px;}
+  .acard .sub{font-size:14px;color:var(--muted);margin-bottom:26px;}
+
+  /* ASK */
+  .ask-wrap{max-width:460px;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:36px;text-align:center;}
+  .avatar{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:#fff;margin:0 auto 18px;}
+  .ask-wrap h2{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;margin-bottom:4px;}
+  .ask-wrap .sub{font-size:14px;color:var(--muted);margin-bottom:20px;}
+  .anon-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(124,106,255,.1);border:1px solid rgba(124,106,255,.2);border-radius:100px;padding:4px 12px;font-size:11px;color:#a89aff;margin-bottom:22px;letter-spacing:.3px;}
+  textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;resize:none;outline:none;min-height:120px;transition:border-color .2s;margin-bottom:8px;line-height:1.6;}
+  textarea:focus{border-color:var(--accent2);}
+  textarea::placeholder{color:var(--muted);}
+  .cc{text-align:right;font-size:12px;color:var(--muted);margin-bottom:13px;}
+  .btn-send{width:100%;background:var(--accent2);color:#fff;border:none;border-radius:13px;padding:13px;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;cursor:pointer;transition:all .2s;}
+  .btn-send:hover{background:#6a58ff;transform:translateY(-1px);}
+  .sent{padding:16px 0;}
+  .sent-i{font-size:52px;margin-bottom:12px;}
+  .sent h3{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px;}
+  .sent p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:18px;}
+
+  /* DASHBOARD */
+  .dash{max-width:920px;margin:0 auto;padding:40px 24px 80px;}
+  .dh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:26px;gap:14px;flex-wrap:wrap;}
+  .dh h2{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.5px;}
+  .dh p{font-size:14px;color:var(--muted);margin-top:3px;}
+  .lout{background:transparent;border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;}
+  .lout:hover{border-color:var(--danger);color:var(--danger);}
+
+  .lbox{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:26px;flex-wrap:wrap;}
+  .llab{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  .lurl{flex:1;font-size:14px;color:var(--accent);word-break:break-all;}
+  .sm{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 14px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .sm:hover{border-color:var(--accent);color:var(--accent);}
+
+  .stats{display:flex;gap:10px;margin-bottom:26px;flex-wrap:wrap;}
+  .sp{background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:8px 18px;font-size:13px;color:var(--muted);}
+  .sp strong{color:var(--text);font-weight:700;}
+
+  .sl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+  .mc{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:11px;transition:border-color .2s,transform .2s;}
+  .mc:hover{border-color:rgba(200,245,100,.2);transform:translateY(-2px);}
+  .mc.isnew{border-color:rgba(124,106,255,.3);}
+  .nd{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent2);margin-right:5px;}
+  .mt{font-size:15px;line-height:1.6;flex:1;}
+  .mm{font-size:12px;color:var(--muted);}
+  .ma{display:flex;gap:8px;}
+  .bbn{flex:1;background:var(--accent);color:#0a0a0f;border:none;border-radius:9px;padding:9px;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;cursor:pointer;transition:all .2s;}
+  .bbn:hover{background:#d4f97a;}
+  .del{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .2s;}
+  .del:hover{color:var(--danger);border-color:rgba(255,107,107,.3);}
+  .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);}
+  .empty .ei{font-size:48px;margin-bottom:14px;}
+  .empty h3{font-family:'Syne',sans-serif;font-size:18px;color:var(--text);margin-bottom:6px;}
+
+  /* BENTO MODAL */
+  .overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:24px;}
+  .overlay.show{display:flex;animation:fi .2s ease;}
+  .mbox{background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:30px;max-width:440px;width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;}
+  .mbox h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
+
+  .bento{width:330px;border-radius:26px;padding:25px 25px 17px;position:relative;overflow:hidden;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+  .bento::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 85% 15%,var(--g1,rgba(200,245,100,.18)) 0%,transparent 55%),radial-gradient(circle at 15% 85%,var(--g2,rgba(124,106,255,.12)) 0%,transparent 50%);}
+  .bi{position:relative;z-index:1;}
+  .blab{display:inline-flex;align-items:center;gap:5px;background:var(--blab-bg,rgba(0,0,0,.07));border-radius:100px;padding:3px 10px;font-size:11px;font-weight:500;color:var(--blab-c,rgba(26,26,46,.5));letter-spacing:.3px;margin-bottom:13px;}
+  .bq{font-size:17px;font-weight:400;line-height:1.6;color:var(--bt,#1a1a2e);margin-bottom:20px;min-height:52px;}
+  .bqm{font-family:'Syne',sans-serif;font-weight:800;font-size:32px;color:var(--bqm-c,rgba(26,26,46,.1));float:left;margin-right:4px;margin-top:-2px;line-height:1;}
+  .bf{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--bdiv,rgba(26,26,46,.1));padding-top:12px;}
+  .bbrand{font-family:'Syne',sans-serif;font-weight:800;font-size:10px;letter-spacing:.5px;color:var(--bbr,rgba(26,26,46,.3));text-transform:uppercase;}
+  .bbrand em{font-style:normal;opacity:.65;}
+  .bdots{display:flex;gap:5px;}
+  .bdot{width:7px;height:7px;border-radius:50%;}
+
+  .bento[data-t="warm"]{background:#f5f0e8;--bt:#1a1a2e;--bqm-c:rgba(26,26,46,.1);--blab-bg:rgba(0,0,0,.06);--blab-c:rgba(26,26,46,.45);--bdiv:rgba(26,26,46,.1);--bbr:rgba(26,26,46,.3);--g1:rgba(200,245,100,.2);--g2:rgba(124,106,255,.1);}
+  .bento[data-t="dark"]{background:#1a1a2e;--bt:#f0f0f5;--bqm-c:rgba(240,240,245,.08);--blab-bg:rgba(255,255,255,.07);--blab-c:rgba(240,240,245,.35);--bdiv:rgba(255,255,255,.08);--bbr:rgba(240,240,245,.25);--g1:rgba(200,245,100,.06);--g2:rgba(124,106,255,.1);}
+  .bento[data-t="pink"]{background:linear-gradient(135deg,#ffe4ef,#ffd6e8);--bt:#2d1832;--bqm-c:rgba(45,24,50,.08);--blab-bg:rgba(45,24,50,.06);--blab-c:rgba(45,24,50,.4);--bdiv:rgba(45,24,50,.1);--bbr:rgba(45,24,50,.3);--g1:rgba(255,144,194,.3);--g2:rgba(201,122,255,.15);}
+  .bento[data-t="lime"]{background:#e8f5c8;--bt:#1a2e0a;--bqm-c:rgba(26,46,10,.08);--blab-bg:rgba(26,46,10,.06);--blab-c:rgba(26,46,10,.4);--bdiv:rgba(26,46,10,.1);--bbr:rgba(26,46,10,.3);--g1:rgba(124,200,50,.2);--g2:rgba(50,200,100,.1);}
+
+  .tpicker{display:flex;gap:10px;justify-content:center;}
+  .tsw{width:34px;height:34px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .2s;}
+  .tsw:hover,.tsw.active{border-color:var(--accent);transform:scale(1.12);}
+
+  .mact{display:flex;gap:10px;width:100%;}
+  .bdl{flex:1;background:var(--accent);color:#0a0a0f;border:none;border-radius:13px;padding:13px;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;cursor:pointer;transition:all .2s;}
+  .bdl:hover{background:#d4f97a;}
+  .bcx{background:var(--surface2);border:1px solid var(--border);border-radius:13px;padding:13px 18px;font-size:14px;color:var(--muted);cursor:pointer;transition:all .2s;}
+  .bcx:hover{color:var(--text);}
+
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--accent);color:#0a0a0f;border-radius:100px;padding:10px 22px;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;z-index:9999;opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap;}
+  .toast.show{opacity:1;}
+
+  @media(max-width:580px){
+    .steps{grid-template-columns:1fr;}
+    nav{padding:14px 18px;}
+    .bento{width:100%;max-width:310px;}
+    .mbox{padding:22px 16px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<nav>
+  <div class="logo" onclick="goHome()">tell<span>me</span></div>
+  <div class="nav-right" id="navRight">
+    <div class="nav-pill" onclick="showLoginView()">Log in</div>
+    <div class="nav-pill hi" onclick="scrollCreate()">Create link →</div>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div class="view active" id="view-home">
+  <div class="hero">
+    <div class="badge">✦ Anonymous Questions</div>
+    <h1>Let them ask.<br><em>You decide</em><br>what's shared.</h1>
+    <p>Create your link, collect anonymous questions, download beautiful bento cards to reply on Reels, TikTok, or Stories.</p>
+  </div>
+
+  <div class="box" id="createBox">
+    <h3>Create your link</h3>
+    <div class="field">
+      <label>Handle</label>
+      <input type="text" id="rHandle" placeholder="alex" maxlength="20" oninput="cleanHandle(this)" />
+      <div class="hint">Letters, numbers, underscores. Becomes your public URL.</div>
+    </div>
+    <div class="field">
+      <label>4-digit PIN <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(to log in later)</span></label>
+      <div class="pin-row">
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="rp0">
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="rp1">
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="rp2">
+        <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="rp3">
+      </div>
+      <div class="hint">⚠️ No recovery — remember your PIN.</div>
+    </div>
+    <div class="err" id="rErr"></div>
+    <button class="btn" onclick="register()">Create my link →</button>
+    <div class="divider">already have a link?</div>
+    <button class="btn ghost" onclick="showLoginView()">Log in to dashboard</button>
+  </div>
+
+  <div class="steps">
+    <div class="step"><div class="sn">1</div><h3>Pick a handle + PIN</h3><p>Your PIN gates your dashboard. No email needed, ever.</p></div>
+    <div class="step"><div class="sn">2</div><h3>Share your link</h3><p>Anyone can ask anonymously — no login, no account, nothing.</p></div>
+    <div class="step"><div class="sn">3</div><h3>Download bento cards</h3><p>Reply with style. Stick cards on Reels and go viral.</p></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="view" id="view-login">
+  <div class="cview">
+    <div class="acard">
+      <h2>Welcome back</h2>
+      <p class="sub">Enter your handle and PIN.</p>
+      <div class="field">
+        <label>Handle</label>
+        <input type="text" id="lHandle" placeholder="alex" maxlength="20" oninput="cleanHandle(this)" />
+      </div>
+      <div class="field">
+        <label>4-digit PIN</label>
+        <div class="pin-row">
+          <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="lp0">
+          <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="lp1">
+          <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="lp2">
+          <input type="password" inputmode="numeric" maxlength="1" class="pin-box" id="lp3">
+        </div>
+      </div>
+      <div class="err" id="lErr"></div>
+      <button class="btn" style="margin-top:14px" onclick="login()">Open dashboard →</button>
+      <div class="divider">new here?</div>
+      <button class="btn ghost" onclick="goHome()">Create a link</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASK (public page) -->
+<div class="view" id="view-ask">
+  <div class="cview">
+    <div class="ask-wrap">
+      <div class="avatar" id="askAv">?</div>
+      <h2 id="askName">@someone</h2>
+      <p class="sub">wants your anonymous questions</p>
+      <div class="anon-pill">🔒 100% anonymous · no login · ever</div>
+
+      <div id="askForm">
+        <textarea id="askMsg" placeholder="Ask anything... they'll never know it's you 👀" maxlength="280" oninput="upCC()"></textarea>
+        <div class="cc" id="cc">0 / 280</div>
+        <button class="btn-send" onclick="sendQ()">Send anonymously →</button>
+      </div>
+
+      <div class="sent" id="sentBox" style="display:none">
+        <div class="sent-i">🎯</div>
+        <h3>Sent!</h3>
+        <p>Your question was delivered anonymously.<br>They'll never know it was you.</p>
+        <button class="btn-send" onclick="resetAsk()">Ask another →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="view" id="view-dash">
+  <div class="dash">
+    <div class="dh">
+      <div>
+        <h2 id="dTitle">Inbox</h2>
+        <p id="dSub">anonymous questions</p>
+      </div>
+      <button class="lout" onclick="logout()">Log out</button>
+    </div>
+
+    <div class="lbox">
+      <div style="flex:1">
+        <div class="llab">Your public link</div>
+        <div class="lurl" id="dLink">Loading...</div>
+      </div>
+      <button class="sm" onclick="copyLink()">Copy</button>
+      <button class="sm" onclick="shareLink()">Share</button>
+      <button class="sm" onclick="previewAsk()">Preview ↗</button>
+    </div>
+
+    <div class="stats">
+      <div class="sp"><strong id="sTot">0</strong> total</div>
+      <div class="sp"><strong id="sNew">0</strong> new</div>
+    </div>
+
+    <div class="sl" id="slabel"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<!-- BENTO MODAL -->
+<div class="overlay" id="modal">
+  <div class="mbox">
+    <h3>Download Bento Card</h3>
+    <div id="bPrev"></div>
+    <div>
+      <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:700">Style</p>
+      <div class="tpicker">
+        <div class="tsw active" style="background:#f5f0e8" data-t="warm" onclick="setTheme('warm',this)"></div>
+        <div class="tsw" style="background:#1a1a2e" data-t="dark" onclick="setTheme('dark',this)"></div>
+        <div class="tsw" style="background:linear-gradient(135deg,#ffe4ef,#ffd6e8)" data-t="pink" onclick="setTheme('pink',this)"></div>
+        <div class="tsw" style="background:#e8f5c8" data-t="lime" onclick="setTheme('lime',this)"></div>
+      </div>
+    </div>
+    <div class="mact">
+      <button class="bcx" onclick="closeModal()">Cancel</button>
+      <button class="bdl" onclick="downloadCard()">↓ Download JPG</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====== CONFIG ====== */
+const API_BASE = window.location.origin; // Use same origin as frontend
+let USE_API = false; // Set to false to use localStorage only
+
+/* ====== API STORAGE ====== */
+// Disabled - using localStorage only
+async function apiHealthCheck(){
+  // API disabled - using localStorage
+  USE_API = false;
+}
+apiHealthCheck();
+
+async function apiRegister(handle,pin){
+  try{
+    const res=await fetch(API_BASE+'/api/register',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,pin})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Registration failed');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiLogin(handle,pin){
+  try{
+    const res=await fetch(API_BASE+'/api/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,pin})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Login failed');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiGetAccount(handle){
+  try{
+    const res=await fetch(API_BASE+'/api/account/'+encodeURIComponent(handle),{cache:'no-cache'});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Account not found');
+    return {
+      handle:data.handle,
+      pinHash:'', // Not returned for security
+      messages:data.messages||[],
+      createdAt:data.createdAt
+    };
+  }catch(e){return null;}
+}
+
+async function apiSendQuestion(handle,text){
+  try{
+    const res=await fetch(API_BASE+'/api/question',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,text})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Failed to send question');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiDeleteMessage(messageId,handle){
+  try{
+    const res=await fetch(API_BASE+'/api/message/'+messageId,{
+      method:'DELETE',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Failed to delete message');
+    return {success:true};
+  }catch(e){throw e;}
+}
+
+async function apiMarkRead(handle){
+  try{
+    await fetch(API_BASE+'/api/messages/read',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle})
+    });
+  }catch(e){/* Ignore errors */}
+}
+
+/* ====== STORAGE (with API fallback) ====== */
+const KEY = 'tm_v1';
+function allAccs(){ try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return{};} }
+function saveAll(d){ localStorage.setItem(KEY,JSON.stringify(d)); }
+function getAcc(h){ return allAccs()[h]||null; }
+function putAcc(h,d){ const a=allAccs(); a[h]=d; saveAll(a); }
+
+/* ====== SESSION ====== */
+let S = null; // {handle}
+
+/* ====== VIEWS ====== */
+function show(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+}
+function goHome(){ show('home'); refreshNav(); }
+function showLoginView(){ clearLogin(); show('login'); }
+function scrollCreate(){ goHome(); setTimeout(()=>document.getElementById('createBox').scrollIntoView({behavior:'smooth'}),50); }
+
+function refreshNav(){
+  const n=document.getElementById('navRight');
+  if(S){
+    n.innerHTML=`<span style="font-size:13px;color:var(--muted)">@${S.handle}</span>
+    <div class="nav-pill hi" onclick="openDash()">Dashboard →</div>`;
+  } else {
+    n.innerHTML=`<div class="nav-pill" onclick="showLoginView()">Log in</div>
+    <div class="nav-pill hi" onclick="scrollCreate()">Create link →</div>`;
+  }
+}
+
+function openDash(){ renderDash(); show('dash'); }
+
+/* ====== PIN HELPERS ====== */
+function cleanHandle(el){ el.value=el.value.toLowerCase().replace(/[^a-z0-9_]/g,''); }
+
+function hashPin(p){
+  let h=5381;
+  for(let i=0;i<p.length;i++) h=((h<<5)+h)+p.charCodeAt(i);
+  return (h>>>0).toString(36);
+}
+
+function getPin(prefix){
+  return [0,1,2,3].map(i=>document.getElementById(prefix+i).value).join('');
+}
+
+function clearLogin(){
+  document.getElementById('lHandle').value='';
+  [0,1,2,3].forEach(i=>document.getElementById('lp'+i).value='');
+  document.getElementById('lErr').textContent='';
+}
+
+/* ====== REGISTER ====== */
+async function register(){
+  const handle=document.getElementById('rHandle').value.trim();
+  const pin=getPin('rp');
+  const err=document.getElementById('rErr');
+  err.textContent='';
+  if(!handle||handle.length<2){err.textContent='Handle must be at least 2 characters.';return;}
+  if(!/^\d{4}$/.test(pin)){err.textContent='Enter a 4-digit PIN.';return;}
+  
+  if(USE_API){
+    try{
+      await apiRegister(handle,pin);
+      // Also save locally as backup
+      putAcc(handle,{handle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
+      S={handle};
+      refreshNav();
+      await renderDash();
+      show('dash');
+      toast('Link created! Share it 🎉');
+    }catch(e){
+      err.textContent=e.message||'Registration failed. Try again.';
+    }
+  }else{
+    // Fallback to localStorage
+    if(getAcc(handle)){err.textContent='@'+handle+' is taken. Try another handle or log in.';return;}
+    putAcc(handle,{handle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
+    S={handle};
+    refreshNav();
+    renderDash();
+    show('dash');
+    toast('Link created! Share it 🎉');
+  }
+}
+
+/* ====== LOGIN ====== */
+async function login(){
+  const handle=document.getElementById('lHandle').value.trim();
+  const pin=getPin('lp');
+  const err=document.getElementById('lErr');
+  err.textContent='';
+  if(!handle){err.textContent='Enter your handle.';return;}
+  if(pin.length!==4){err.textContent='Enter your 4-digit PIN.';return;}
+  
+  if(USE_API){
+    try{
+      await apiLogin(handle,pin);
+      S={handle};
+      refreshNav();
+      await renderDash();
+      show('dash');
+      clearLogin();
+    }catch(e){
+      err.textContent=e.message||'Login failed. Check your handle and PIN.';
+    }
+  }else{
+    // Fallback to localStorage
+    const acc=getAcc(handle);
+    if(!acc){err.textContent='No account found for @'+handle+'. Check your handle.';return;}
+    if(acc.pinHash!==hashPin(pin)){err.textContent='Wrong PIN. Try again.';return;}
+    S={handle};
+    refreshNav();
+    renderDash();
+    show('dash');
+    clearLogin();
+  }
+}
+
+function logout(){ S=null; refreshNav(); goHome(); toast('Logged out'); }
+
+/* ====== ASK PAGE ====== */
+let askTarget=null;
+
+async function loadAsk(handle){
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(handle);
+  }else{
+    acc=getAcc(handle);
+  }
+  if(!acc){ alert('This link doesn\'t exist yet!'); return; }
+  askTarget=handle;
+  document.getElementById('askAv').textContent=handle.charAt(0).toUpperCase();
+  document.getElementById('askName').textContent='@'+handle;
+  document.getElementById('askMsg').value='';
+  document.getElementById('cc').textContent='0 / 280';
+  document.getElementById('askForm').style.display='block';
+  document.getElementById('sentBox').style.display='none';
+  // Minimal nav on ask page
+  document.getElementById('navRight').innerHTML=`<div class="nav-pill" onclick="goHome()">← Home</div>`;
+  show('ask');
+}
+
+function upCC(){
+  const l=document.getElementById('askMsg').value.length;
+  document.getElementById('cc').textContent=l+' / 280';
+}
+
+async function sendQ(){
+  const txt=document.getElementById('askMsg').value.trim();
+  if(!txt||!askTarget)return;
+  
+  if(USE_API){
+    try{
+      await apiSendQuestion(askTarget,txt);
+      document.getElementById('askForm').style.display='none';
+      document.getElementById('sentBox').style.display='block';
+    }catch(e){
+      alert('Failed to send question: '+(e.message||'Unknown error'));
+    }
+  }else{
+    // Fallback to localStorage
+    const acc=getAcc(askTarget);
+    if(!acc)return;
+    acc.messages=acc.messages||[];
+    const now=new Date();
+    acc.messages.unshift({
+      id:Date.now(),text:txt,
+      time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+      date:now.toLocaleDateString([],{month:'short',day:'numeric'}),
+      isNew:true
+    });
+    putAcc(askTarget,acc);
+    document.getElementById('askForm').style.display='none';
+    document.getElementById('sentBox').style.display='block';
+  }
+}
+
+function resetAsk(){
+  document.getElementById('askMsg').value='';
+  document.getElementById('cc').textContent='0 / 280';
+  document.getElementById('askForm').style.display='block';
+  document.getElementById('sentBox').style.display='none';
+}
+
+function previewAsk(){ if(S) loadAsk(S.handle); }
+
+/* ====== DASHBOARD ====== */
+async function renderDash(){
+  if(!S)return;
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(S.handle);
+  }else{
+    acc=getAcc(S.handle);
+  }
+  if(!acc)return;
+  const msgs=acc.messages||[];
+  const nw=msgs.filter(m=>m.isNew).length;
+  document.getElementById('dTitle').textContent='@'+S.handle;
+  document.getElementById('dSub').textContent='anonymous questions · dashboard';
+  document.getElementById('dLink').textContent=getPublicUrl(S.handle);
+  document.getElementById('sTot').textContent=msgs.length;
+  document.getElementById('sNew').textContent=nw;
+  document.getElementById('slabel').textContent=msgs.length?(nw?nw+' new · '+msgs.length+' total':msgs.length+' questions'):'';
+
+  const g=document.getElementById('grid');
+  if(!msgs.length){
+    g.innerHTML=`<div class="empty"><div class="ei">💌</div><h3>No questions yet</h3><p>Copy your link and share it anywhere.</p></div>`;
+    return;
+  }
+  g.innerHTML=msgs.map(m=>`
+    <div class="mc ${m.isNew?'isnew':''}" id="mc${m.id}">
+      <div class="mt">"${esc(m.text)}"</div>
+      <div class="mm">${m.isNew?'<span class="nd"></span>':''}${m.date} · ${m.time}</div>
+      <div class="ma">
+        <button class="bbn" onclick="openBento(${m.id})">Download Bento ↓</button>
+        <button class="del" onclick="delMsg(${m.id})">✕</button>
+      </div>
+    </div>`).join('');
+
+  // Mark as read after 2s
+  setTimeout(async ()=>{
+    if(USE_API){
+      await apiMarkRead(S.handle);
+    }else{
+      const a=getAcc(S.handle);
+      if(!a)return;
+      a.messages.forEach(m=>m.isNew=false);
+      putAcc(S.handle,a);
+    }
+    document.querySelectorAll('.mc.isnew').forEach(el=>{
+      el.classList.remove('isnew');
+      const nd=el.querySelector('.nd');
+      if(nd)nd.remove();
+    });
+    document.getElementById('sNew').textContent='0';
+  },2000);
+}
+
+async function delMsg(id){
+  if(!S)return;
+  if(USE_API){
+    try{
+      await apiDeleteMessage(id,S.handle);
+      await renderDash();
+    }catch(e){
+      alert('Failed to delete message: '+(e.message||'Unknown error'));
+    }
+  }else{
+    const acc=getAcc(S.handle);
+    acc.messages=acc.messages.filter(m=>m.id!==id);
+    putAcc(S.handle,acc);
+    renderDash();
+  }
+}
+
+function copyLink(){
+  const url=getPublicUrl(S?.handle||'');
+  navigator.clipboard.writeText(url).then(()=>toast('Link copied!'));
+}
+function shareLink(){
+  const url=getPublicUrl(S?.handle||'');
+  if(navigator.share) navigator.share({title:'Ask me anonymously 👀',url});
+  else copyLink();
+}
+
+/* ====== BENTO ====== */
+let bId=null, bTheme='warm', bHandle='';
+const dots={
+  warm:['#1a1a2e','#7c6aff','rgba(26,26,46,.15)'],
+  dark:['#c8f564','#7c6aff','rgba(255,255,255,.12)'],
+  pink:['#ff90c2','#c97aff','rgba(45,24,50,.12)'],
+  lime:['#3d8a1a','#50c878','rgba(26,46,10,.12)'],
+};
+
+async function openBento(id){
+  if(!S)return;
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(S.handle);
+  }else{
+    acc=getAcc(S.handle);
+  }
+  const msg=acc?.messages.find(m=>m.id===id);
+  if(!msg)return;
+  bId=id; bHandle=S.handle; bTheme='warm';
+  document.querySelectorAll('.tsw').forEach(s=>s.classList.toggle('active',s.dataset.t==='warm'));
+  renderCard(msg.text,'warm');
+  document.getElementById('modal').classList.add('show');
+}
+
+async function setTheme(t,el){
+  bTheme=t;
+  document.querySelectorAll('.tsw').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  let acc=null;
+  if(USE_API){
+    acc=await apiGetAccount(bHandle);
+  }else{
+    acc=getAcc(bHandle);
+  }
+  const msg=acc?.messages.find(m=>m.id===bId);
+  if(msg) renderCard(msg.text,t);
+}
+
+function renderCard(text,t){
+  const d=dots[t];
+  document.getElementById('bPrev').innerHTML=`
+    <div class="bento" data-t="${t}" id="theCard">
+      <div class="bi">
+        <div class="blab">🔒 anonymous question</div>
+        <div class="bq"><span class="bqm">"</span>${esc(text)}"</div>
+        <div class="bf">
+          <div class="bbrand">tellme<em>${window.location.hostname ? '.' + window.location.hostname : ''}</em></div>
+          <div class="bdots">
+            <div class="bdot" style="background:${d[0]}"></div>
+            <div class="bdot" style="background:${d[1]}"></div>
+            <div class="bdot" style="background:${d[2]}"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+
+function downloadCard(){
+  const card=document.getElementById('theCard');
+  if(!card)return;
+  html2canvas(card,{scale:3,useCORS:true,backgroundColor:null,logging:false}).then(canvas=>{
+    const out=document.createElement('canvas');
+    out.width=canvas.width; out.height=canvas.height;
+    const ctx=out.getContext('2d');
+    const r=26*3, w=canvas.width, h=canvas.height;
+    ctx.beginPath();
+    ctx.moveTo(r,0);ctx.lineTo(w-r,0);ctx.quadraticCurveTo(w,0,w,r);
+    ctx.lineTo(w,h-r);ctx.quadraticCurveTo(w,h,w-r,h);
+    ctx.lineTo(r,h);ctx.quadraticCurveTo(0,h,0,h-r);
+    ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);
+    ctx.closePath();ctx.clip();
+    ctx.drawImage(canvas,0,0);
+    const a=document.createElement('a');
+    a.download='tellme-'+bHandle+'-'+Date.now()+'.jpg';
+    a.href=out.toDataURL('image/jpeg',.95);
+    a.click();
+  });
+  toast('Downloading...');
+  closeModal();
+}
+
+/* ====== UTILS ====== */
+function getBaseUrl(){
+  if(window.location.origin && window.location.origin !== 'null'){
+    const path = window.location.pathname.replace(/\/[^/]*$/, '');
+    return window.location.origin + (path || '');
+  }
+  // Fallback for file:// protocol
+  return window.location.href.split('/').slice(0, -1).join('/') || window.location.href;
+}
+function getPublicUrl(handle){
+  const base = getBaseUrl();
+  // Remove trailing slash if present, then add hash route
+  return base.replace(/\/$/, '') + '/#/u/' + handle;
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+/* ====== PIN WIRING ====== */
+function wirePins(){
+  document.querySelectorAll('.pin-box').forEach((el,i,all)=>{
+    el.addEventListener('input',()=>{
+      el.value=el.value.replace(/\D/g,'').slice(0,1);
+      if(el.value&&i<all.length-1) all[i+1].focus();
+      // auto-login on last login pin
+      if(el.id==='lp3'&&el.value) login();
+    });
+    el.addEventListener('keydown',e=>{
+      if(e.key==='Backspace'&&!el.value&&i>0) all[i-1].focus();
+    });
+  });
+}
+
+/* ====== ROUTING ====== */
+function route(){
+  const h=location.hash;
+  if(h.startsWith('#/u/')){
+    const handle=h.slice(4).split('?')[0];
+    if(handle){ loadAsk(handle); return; }
+  }
+  if(h==='#/login'){ showLoginView(); return; }
+  if(S) refreshNav();
+}
+
+window.addEventListener('hashchange',route);
+window.addEventListener('DOMContentLoaded',()=>{ wirePins(); route(); });
+</script>
+</div>
+</body>
+</html>
