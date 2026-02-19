@@ -321,7 +321,10 @@
 
 <script>
 /* ====== CONFIG ====== */
-const API_BASE = window.location.origin; // Use same origin as frontend
+// Backend URL - update this with your Render backend URL
+// Format: https://your-app-name.onrender.com
+const BACKEND_URL = ''; // Leave empty to auto-detect (same origin)
+const API_BASE = BACKEND_URL || window.location.origin; // Use configured backend or same origin
 let USE_API = false; // Will be set after health check
 
 /* ====== API STORAGE ====== */
