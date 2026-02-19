@@ -13,7 +13,41 @@ A beautiful, privacy-focused anonymous Q&A platform. Users create a link with a 
 
 ## Quick Start
 
-### Option 1: Full Backend Setup (Recommended - Persistent Data)
+### Option 1: Supabase Backend (Recommended - Persistent Data) ⭐
+
+**Best for production** - Persistent storage, no server needed!
+
+1. **Set up Supabase** (5 minutes):
+   - Follow the guide in [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md)
+   - Get your Supabase URL and anon key
+   - Run the SQL migration from `supabase_setup.sql`
+
+2. **Configure TellMe**:
+   - Open `tellme.html`
+   - Replace `YOUR_SUPABASE_URL` and `YOUR_SUPABASE_ANON_KEY` with your values
+
+3. **Run locally**:
+   ```bash
+   # Python 3
+   python3 -m http.server 8000
+   
+   # Or Node.js
+   npx http-server -p 8000
+   ```
+   Then open `http://localhost:8000/tellme.html` in your browser.
+
+4. **Deploy to Vercel**:
+   - Push to GitHub
+   - Connect to Vercel
+   - Deploy! (No server needed - just static files)
+
+**Benefits:**
+- ✅ Persistent data (never lost on redeploy)
+- ✅ No server to manage
+- ✅ Free tier (500MB database)
+- ✅ Works from any device/browser
+
+### Option 2: Express Server (Legacy)
 
 ```bash
 # Install dependencies
@@ -26,12 +60,9 @@ npm start
 # Open http://localhost:3000/tellme.html in your browser
 ```
 
-The server will:
-- Create a SQLite database (`tellme.db`) automatically
-- Store all accounts and messages persistently
-- Provide API endpoints for the frontend
+**Note:** This uses SQLite which gets wiped on Render's free tier. Use Supabase instead for persistent storage.
 
-### Option 2: Frontend Only (LocalStorage Mode)
+### Option 3: Frontend Only (LocalStorage Mode)
 
 ```bash
 # Python 3
@@ -43,19 +74,7 @@ npx http-server -p 8000
 
 Then open `http://localhost:8000/tellme.html` in your browser.
 
-**Note:** Without the backend, data is stored in localStorage only (per-browser).
-
-### Option 3: Deploy to Production
-
-**Backend + Frontend:**
-- Deploy `server.js` to any Node.js hosting (Heroku, Railway, Render, etc.)
-- The server serves the frontend automatically
-- Database persists on the server
-
-**Frontend Only:**
-- Deploy `tellme.html` to static hosting (GitHub Pages, Netlify, Vercel)
-- Rename to `index.html` if needed
-- Works with localStorage fallback
+**Note:** Without Supabase, data is stored in localStorage only (per-browser, not synced).
 
 ## How It Works
 
@@ -67,16 +86,25 @@ Then open `http://localhost:8000/tellme.html` in your browser.
 
 ## Data Storage
 
-**Currently using: LocalStorage Mode**
+### Supabase Mode (Recommended) ⭐
 
-All data is stored in the browser's `localStorage`:
-- ✅ **No server needed** - Works completely offline
+When configured with Supabase:
+- ✅ **Persistent storage** - Data stored in PostgreSQL cloud database
+- ✅ **Synced across devices** - Login from any device/browser
+- ✅ **Never lost** - Data persists even after clearing browser cache
+- ✅ **Free tier** - 500MB database, perfect for this app
+- ✅ **No server needed** - Direct connection from frontend
+
+### LocalStorage Mode (Fallback)
+
+If Supabase is not configured, data falls back to browser's `localStorage`:
+- ✅ **No setup needed** - Works immediately
 - ✅ **Complete privacy** - All data stays in your browser
 - ✅ **Fast** - Instant access, no network delays
 - ⚠️ **Per-browser/device** - Data is not synced across devices
 - ⚠️ **Browser-specific** - Clearing browser data will delete all accounts
 
-**Note:** Backend mode is available but disabled by default. To enable it, change `USE_API = false` to `USE_API = true` in `tellme.html` and run the server.
+**To enable Supabase:** Follow [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md)
 
 ## Customization
 
@@ -100,17 +128,26 @@ Works in all modern browsers that support:
 ### Frontend
 - **Google Fonts** (Syne, DM Sans) - Loaded from CDN
 - **html2canvas** - For generating bento card images (loaded from CDN)
+- **@supabase/supabase-js** - Supabase client library (loaded from CDN)
 
-### Backend (if using server)
+### Backend (Optional - Legacy Express Server)
 - **Express** - Web server framework
 - **SQLite3** - Database for persistent storage
 - **CORS** - Cross-origin resource sharing
 
 Install with: `npm install`
 
+**Note:** Supabase mode doesn't require any npm dependencies - everything runs in the browser!
+
 ## API Endpoints
 
-When using the backend server:
+### Supabase Mode (Current)
+
+The app uses Supabase directly from the frontend - no API endpoints needed! All operations use Supabase's JavaScript client.
+
+### Express Server Mode (Legacy)
+
+When using the Express server:
 
 - `POST /api/register` - Create new account
 - `POST /api/login` - Login with handle and PIN
@@ -121,6 +158,20 @@ When using the backend server:
 - `GET /api/health` - Health check
 
 ## Configuration
+
+### Supabase Configuration
+
+Open `tellme.html` and set:
+```javascript
+const SUPABASE_URL = 'https://xxxxx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+```
+
+Get these values from your Supabase project: Settings → API
+
+See [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) for detailed instructions.
+
+### Express Server Configuration (Legacy)
 
 Create a `.env` file (optional):
 ```env

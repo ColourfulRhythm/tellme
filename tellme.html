@@ -7,6 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👂</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c28;
@@ -327,107 +328,205 @@
 
 <script>
 /* ====== CONFIG ====== */
-// Backend URL - update this with your Render backend URL
-// Format: https://your-app-name.onrender.com
-const BACKEND_URL = 'https://tellme-kv8c.onrender.com';
-const API_BASE = BACKEND_URL || window.location.origin; // Use configured backend or same origin
-let USE_API = false; // Will be set after health check
+// Supabase Configuration
+// Get these from your Supabase project: Settings > API
+const SUPABASE_URL = 'https://yakzsrkwhlwwdkonlzem.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlha3pzcmt3aGx3d2Rrb25semVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MjQ2MTksImV4cCI6MjA4NzEwMDYxOX0.nhRdfpnyJQ5sR33aA8z7-tek_Ftbnt6t8PICtr-h-Bc';
 
-/* ====== API STORAGE ====== */
-async function apiHealthCheck(){
-  try{
-    const res=await fetch(API_BASE+'/api/health',{method:'GET',cache:'no-cache',timeout:2000});
-    USE_API=res.ok;
-    if(USE_API) console.log('✅ Backend API connected - data will persist');
-  }catch{
-    USE_API=false;
-    console.log('ℹ️ Using localStorage mode - data stored locally');
-  }
+// Initialize Supabase client
+let supabase = null;
+let USE_SUPABASE = false;
+
+if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  USE_SUPABASE = true;
+  console.log('✅ Supabase connected - data will persist');
+} else {
+  console.log('ℹ️ Supabase not configured - using localStorage mode');
+  console.log('⚠️ Please set SUPABASE_URL and SUPABASE_ANON_KEY in tellme.html');
 }
-apiHealthCheck();
 
+/* ====== SUPABASE FUNCTIONS ====== */
 async function apiRegister(handle,pin){
-  try{
-    const res=await fetch(API_BASE+'/api/register',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({handle,pin})
+  if(!USE_SUPABASE) throw new Error('Supabase not configured');
+  
+  const normalizedHandle=handle.toLowerCase().trim();
+  const pinHash=hashPin(pin);
+  
+  // Validate handle format
+  if(!/^[a-z0-9_]+$/.test(normalizedHandle)){
+    throw new Error('Handle can only contain letters, numbers, and underscores');
+  }
+  if(normalizedHandle.length<2||normalizedHandle.length>20){
+    throw new Error('Handle must be 2-20 characters');
+  }
+  if(!/^\d{4}$/.test(pin)){
+    throw new Error('PIN must be 4 digits');
+  }
+  
+  // Check if handle exists
+  const {data:existing}=await supabase
+    .from('accounts')
+    .select('handle')
+    .eq('handle',normalizedHandle)
+    .single();
+  
+  if(existing){
+    throw new Error(`@${normalizedHandle} is already taken`);
+  }
+  
+  // Create account
+  const {error}=await supabase
+    .from('accounts')
+    .insert({
+      handle:normalizedHandle,
+      pin_hash:pinHash,
+      created_at:Date.now()
     });
-    if(!res.ok){
-      const text=await res.text();
-      let error='Registration failed';
-      try{
-        const data=JSON.parse(text);
-        error=data.error||error;
-      }catch{}
-      throw new Error(error);
+  
+  if(error){
+    if(error.code==='23505'){ // Unique constraint violation
+      throw new Error(`@${normalizedHandle} is already taken`);
     }
-    const data=await res.json();
-    return {success:true};
-  }catch(e){throw e;}
+    throw new Error(error.message||'Registration failed');
+  }
+  
+  return {success:true};
 }
 
 async function apiLogin(handle,pin){
-  try{
-    const res=await fetch(API_BASE+'/api/login',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({handle,pin})
-    });
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Login failed');
-    return {success:true};
-  }catch(e){throw e;}
+  if(!USE_SUPABASE) throw new Error('Supabase not configured');
+  
+  const normalizedHandle=handle.toLowerCase().trim();
+  const pinHash=hashPin(pin);
+  
+  // Get account
+  const {data:account,error}=await supabase
+    .from('accounts')
+    .select('handle,pin_hash')
+    .eq('handle',normalizedHandle)
+    .single();
+  
+  if(error||!account){
+    throw new Error(`Account @${normalizedHandle} not found. Did you register?`);
+  }
+  
+  if(account.pin_hash!==pinHash){
+    throw new Error('Wrong PIN. Please try again.');
+  }
+  
+  return {success:true};
 }
 
 async function apiGetAccount(handle){
-  try{
-    const res=await fetch(API_BASE+'/api/account/'+encodeURIComponent(handle),{cache:'no-cache'});
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Account not found');
+  if(!USE_SUPABASE) return null;
+  
+  const normalizedHandle=handle.toLowerCase();
+  
+  // Get account
+  const {data:account,error:accError}=await supabase
+    .from('accounts')
+    .select('handle,created_at')
+    .eq('handle',normalizedHandle)
+    .single();
+  
+  if(accError||!account) return null;
+  
+  // Get messages
+  const {data:messages,error:msgError}=await supabase
+    .from('messages')
+    .select('id,text,is_new,created_at')
+    .eq('handle',normalizedHandle)
+    .order('created_at',{ascending:false});
+  
+  if(msgError) console.error('Error fetching messages:',msgError);
+  
+  // Format messages
+  const formattedMessages=(messages||[]).map(msg=>{
+    const date=new Date(msg.created_at);
     return {
-      handle:data.handle,
-      pinHash:'', // Not returned for security
-      messages:data.messages||[],
-      createdAt:data.createdAt
+      id:msg.id,
+      text:msg.text,
+      isNew:msg.is_new===true||msg.is_new===1,
+      time:date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+      date:date.toLocaleDateString([],{month:'short',day:'numeric'})
     };
-  }catch(e){return null;}
+  });
+  
+  return {
+    handle:account.handle,
+    pinHash:'', // Not returned for security
+    messages:formattedMessages,
+    createdAt:account.created_at
+  };
 }
 
 async function apiSendQuestion(handle,text){
-  try{
-    const res=await fetch(API_BASE+'/api/question',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({handle,text})
+  if(!USE_SUPABASE) throw new Error('Supabase not configured');
+  
+  const normalizedHandle=handle.toLowerCase();
+  const trimmedText=text.trim();
+  
+  if(!trimmedText||trimmedText.length>280){
+    throw new Error('Question must be 1-280 characters');
+  }
+  
+  // Verify account exists
+  const {data:account}=await supabase
+    .from('accounts')
+    .select('handle')
+    .eq('handle',normalizedHandle)
+    .single();
+  
+  if(!account){
+    throw new Error('Account not found');
+  }
+  
+  // Insert message
+  const {error}=await supabase
+    .from('messages')
+    .insert({
+      handle:normalizedHandle,
+      text:trimmedText,
+      is_new:true,
+      created_at:Date.now()
     });
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Failed to send question');
-    return {success:true};
-  }catch(e){throw e;}
+  
+  if(error){
+    throw new Error(error.message||'Failed to send question');
+  }
+  
+  return {success:true};
 }
 
 async function apiDeleteMessage(messageId,handle){
-  try{
-    const res=await fetch(API_BASE+'/api/message/'+messageId,{
-      method:'DELETE',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({handle})
-    });
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.error||'Failed to delete message');
-    return {success:true};
-  }catch(e){throw e;}
+  if(!USE_SUPABASE) throw new Error('Supabase not configured');
+  
+  const normalizedHandle=handle.toLowerCase();
+  
+  const {error}=await supabase
+    .from('messages')
+    .delete()
+    .eq('id',messageId)
+    .eq('handle',normalizedHandle);
+  
+  if(error){
+    throw new Error(error.message||'Failed to delete message');
+  }
+  
+  return {success:true};
 }
 
 async function apiMarkRead(handle){
-  try{
-    await fetch(API_BASE+'/api/messages/read',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({handle})
-    });
-  }catch(e){/* Ignore errors */}
+  if(!USE_SUPABASE) return;
+  
+  const normalizedHandle=handle.toLowerCase();
+  
+  await supabase
+    .from('messages')
+    .update({is_new:false})
+    .eq('handle',normalizedHandle)
+    .eq('is_new',true);
 }
 
 /* ====== STORAGE (with API fallback) ====== */
@@ -498,10 +597,10 @@ async function register(){
   
   const normalizedHandle=handle.toLowerCase();
   
-  // Always use Render database when BACKEND_URL is configured
-  if(BACKEND_URL || USE_API){
+  // Always use Supabase when configured
+  if(USE_SUPABASE){
     try{
-      // Register in Render database (source of truth)
+      // Register in Supabase (source of truth)
       await apiRegister(handle,pin);
       // Registration successful - update localStorage cache
       const accs=allAccs();
@@ -544,10 +643,10 @@ async function login(){
   
   const normalizedHandle=handle.toLowerCase();
   
-  // Always use Render database when BACKEND_URL is configured
-  if(BACKEND_URL || USE_API){
+  // Always use Supabase when configured
+  if(USE_SUPABASE){
     try{
-      // Login against Render database (source of truth)
+      // Login against Supabase (source of truth)
       await apiLogin(normalizedHandle,pin);
       // Login successful - update localStorage cache with fresh data from database
       const acc=await apiGetAccount(normalizedHandle);
@@ -560,7 +659,7 @@ async function login(){
       show('dash');
       clearLogin();
     }catch(e){
-      // Login failed - Render database is source of truth
+      // Login failed - Supabase is source of truth
       // Clear any stale localStorage cache (it's just a cache, database is real)
       const accs=allAccs();
       delete accs[normalizedHandle];
@@ -594,15 +693,15 @@ async function loadAsk(handle){
   }
   
   let acc=null;
-  // Always try API first if BACKEND_URL is configured
-  if(BACKEND_URL || USE_API){
+  // Always try Supabase first if configured
+  if(USE_SUPABASE){
     try{
       acc=await apiGetAccount(handle);
     }catch(e){
-      console.log('API check failed, trying localStorage:',e);
+      console.log('Supabase check failed, trying localStorage:',e);
     }
   }
-  // Fallback to localStorage if API didn't work
+  // Fallback to localStorage if Supabase didn't work
   if(!acc){
     acc=getAcc(handle);
   }
@@ -634,7 +733,7 @@ async function sendQ(){
   const txt=document.getElementById('askMsg').value.trim();
   if(!txt||!askTarget)return;
   
-  if(USE_API){
+  if(USE_SUPABASE){
     try{
       await apiSendQuestion(askTarget,txt);
       document.getElementById('askForm').style.display='none';
@@ -673,7 +772,7 @@ function previewAsk(){ if(S) loadAsk(S.handle); }
 async function renderDash(){
   if(!S)return;
   let acc=null;
-  if(USE_API){
+  if(USE_SUPABASE){
     acc=await apiGetAccount(S.handle);
   }else{
     acc=getAcc(S.handle);
@@ -705,7 +804,7 @@ async function renderDash(){
 
   // Mark as read after 2s
   setTimeout(async ()=>{
-    if(USE_API){
+    if(USE_SUPABASE){
       await apiMarkRead(S.handle);
     }else{
       const a=getAcc(S.handle);
@@ -724,7 +823,7 @@ async function renderDash(){
 
 async function delMsg(id){
   if(!S)return;
-  if(BACKEND_URL || USE_API){
+  if(USE_SUPABASE){
     try{
       await apiDeleteMessage(id,S.handle);
       await renderDash();
