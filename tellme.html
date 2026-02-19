@@ -329,21 +329,22 @@
 <script>
 /* ====== CONFIG ====== */
 // Supabase Configuration
-// Get these from your Supabase project: Settings > API
-const SUPABASE_URL = 'https://yakzsrkwhlwwdkonlzem.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlha3pzcmt3aGx3d2Rrb25semVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MjQ2MTksImV4cCI6MjA4NzEwMDYxOX0.nhRdfpnyJQ5sR33aA8z7-tek_Ftbnt6t8PICtr-h-Bc';
+// These values are injected at build time from environment variables
+// Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel dashboard: Settings → Environment Variables
+const SUPABASE_URL = 'ENV_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'ENV_SUPABASE_ANON_KEY';
 
 // Initialize Supabase client
 let supabase = null;
 let USE_SUPABASE = false;
 
-if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== 'ENV_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' && SUPABASE_ANON_KEY !== 'ENV_SUPABASE_ANON_KEY') {
   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   USE_SUPABASE = true;
   console.log('✅ Supabase connected - data will persist');
 } else {
   console.log('ℹ️ Supabase not configured - using localStorage mode');
-  console.log('⚠️ Please set SUPABASE_URL and SUPABASE_ANON_KEY in tellme.html');
+  console.log('⚠️ Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables');
 }
 
 /* ====== SUPABASE FUNCTIONS ====== */

@@ -28,3 +28,8 @@ node_modules/
 # Environment variables
 .env
 .env.local
+.env.*.local
+
+# Build artifacts (if any)
+dist/
+build/
