@@ -30,6 +30,8 @@
 
   .view{display:none;animation:fi .22s ease;}
   .view.active{display:block;}
+  /* Prevent flash of home page when loading with hash */
+  body:not(.loaded) .view.active{animation:none;}
   @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 
   /* HOME */
