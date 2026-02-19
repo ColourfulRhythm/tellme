@@ -548,13 +548,32 @@ function logout(){ S=null; refreshNav(); goHome(); toast('Logged out'); }
 let askTarget=null;
 
 async function loadAsk(handle){
+  if(!handle || handle.trim()===''){
+    alert('Invalid link!');
+    goHome();
+    return;
+  }
+  
   let acc=null;
-  if(USE_API){
-    acc=await apiGetAccount(handle);
-  }else{
+  // Always try API first if BACKEND_URL is configured
+  if(BACKEND_URL || USE_API){
+    try{
+      acc=await apiGetAccount(handle);
+    }catch(e){
+      console.log('API check failed, trying localStorage:',e);
+    }
+  }
+  // Fallback to localStorage if API didn't work
+  if(!acc){
     acc=getAcc(handle);
   }
-  if(!acc){ alert('This link doesn\'t exist yet!'); return; }
+  
+  if(!acc){ 
+    alert('This link doesn\'t exist yet!'); 
+    goHome();
+    return; 
+  }
+  
   askTarget=handle;
   document.getElementById('askAv').textContent=handle.charAt(0).toUpperCase();
   document.getElementById('askName').textContent='@'+handle;
@@ -816,8 +835,11 @@ function wirePins(){
 function route(){
   const h=location.hash;
   if(h.startsWith('#/u/')){
-    const handle=h.slice(4).split('?')[0];
-    if(handle){ loadAsk(handle); return; }
+    const handle=h.slice(4).split('?')[0].trim();
+    if(handle){ 
+      loadAsk(handle); 
+      return; 
+    }
   }
   if(h==='#/login'){ showLoginView(); return; }
   if(S) refreshNav();

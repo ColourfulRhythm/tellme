@@ -548,13 +548,32 @@ function logout(){ S=null; refreshNav(); goHome(); toast('Logged out'); }
 let askTarget=null;
 
 async function loadAsk(handle){
+  if(!handle || handle.trim()===''){
+    alert('Invalid link!');
+    goHome();
+    return;
+  }
+  
   let acc=null;
-  if(USE_API){
-    acc=await apiGetAccount(handle);
-  }else{
+  // Always try API first if BACKEND_URL is configured
+  if(BACKEND_URL || USE_API){
+    try{
+      acc=await apiGetAccount(handle);
+    }catch(e){
+      console.log('API check failed, trying localStorage:',e);
+    }
+  }
+  // Fallback to localStorage if API didn't work
+  if(!acc){
     acc=getAcc(handle);
   }
-  if(!acc){ alert('This link doesn\'t exist yet!'); return; }
+  
+  if(!acc){ 
+    alert('This link doesn\'t exist yet!'); 
+    goHome();
+    return; 
+  }
+  
   askTarget=handle;
   document.getElementById('askAv').textContent=handle.charAt(0).toUpperCase();
   document.getElementById('askName').textContent='@'+handle;
