@@ -163,6 +163,8 @@ app.post('/api/login', (req, res) => {
   const normalizedHandle = handle.toLowerCase().trim();
   const pinHash = hashPin(pin);
 
+  console.log(`Login attempt for: ${normalizedHandle}, PIN hash: ${pinHash}`);
+
   // First check if account exists
   getDb().get(
     'SELECT handle, pin_hash FROM accounts WHERE handle = ?',
@@ -174,14 +176,16 @@ app.post('/api/login', (req, res) => {
       }
       
       if (!row) {
-        console.log(`Login attempt failed: Account not found for handle: ${normalizedHandle}`);
-        return res.status(401).json({ error: 'Invalid handle or PIN' });
+        console.log(`Login attempt failed: Account @${normalizedHandle} does not exist in database`);
+        return res.status(401).json({ error: `Account @${normalizedHandle} not found. Did you register?` });
       }
+
+      console.log(`Found account, stored hash: ${row.pin_hash}, provided hash: ${pinHash}`);
 
       // Compare PIN hashes
       if (row.pin_hash !== pinHash) {
         console.log(`Login attempt failed: PIN mismatch for handle: ${normalizedHandle}`);
-        return res.status(401).json({ error: 'Invalid handle or PIN' });
+        return res.status(401).json({ error: 'Wrong PIN. Please try again.' });
       }
 
       console.log(`Successful login for handle: ${normalizedHandle}`);
@@ -325,6 +329,23 @@ app.post('/api/messages/read', (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+// Debug: List all accounts (handle only, no sensitive data)
+app.get('/api/debug/accounts', (req, res) => {
+  getDb().all(
+    'SELECT handle, created_at FROM accounts ORDER BY created_at DESC',
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to fetch accounts' });
+      }
+      res.json({ 
+        count: rows.length, 
+        accounts: rows.map(r => ({ handle: r.handle, createdAt: new Date(r.created_at).toISOString() }))
+      });
+    }
+  );
 });
 
 // Start server (Render needs this, Vercel uses module.exports)
