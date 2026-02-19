@@ -36,7 +36,8 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use(express.static(__dirname)); // Serve static files
+// Don't serve static files on Render - frontend is on Vercel
+// app.use(express.static(__dirname));
 
 // Initialize database connection (lazy initialization for serverless)
 let db = null;
@@ -313,11 +314,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
-// Export for Vercel serverless functions
-module.exports = app;
-
-// Only start server if not in Vercel (Vercel handles this automatically)
-if (!isVercel) {
+// Start server (Render needs this, Vercel uses module.exports)
+if (isVercel) {
+  // Export for Vercel serverless functions
+  module.exports = app;
+} else {
+  // Start server for Render and local development
   app.listen(PORT, () => {
     console.log(`TellMe server running on http://localhost:${PORT}`);
     console.log(`Database: ${DB_PATH}`);
