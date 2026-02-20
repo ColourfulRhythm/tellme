@@ -342,6 +342,11 @@ let USE_SUPABASE = false;
 
 // Initialize Supabase after library loads
 function initSupabase(){
+  // Prevent multiple initializations
+  if(supabaseClient){
+    return;
+  }
+  
   if (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_URL !== 'ENV_SUPABASE_URL' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY' && SUPABASE_ANON_KEY !== 'ENV_SUPABASE_ANON_KEY') {
     if (window.supabase) {
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -358,7 +363,7 @@ function initSupabase(){
   }
 }
 
-// Try to initialize immediately, and also on DOMContentLoaded
+// Try to initialize immediately
 initSupabase();
 
 /* ====== SUPABASE FUNCTIONS ====== */
@@ -1285,7 +1290,7 @@ function route(){
 
 window.addEventListener('hashchange',route);
 window.addEventListener('DOMContentLoaded',()=>{ 
-  initSupabase(); // Try again after DOM loads
+  // initSupabase() already called above, will retry if needed
   restoreSession(); // Restore session from localStorage
   wirePins(); 
   route(); 
