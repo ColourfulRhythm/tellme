@@ -973,7 +973,7 @@ function renderCard(text,t){
         <div class="blab">🔒 anonymous question</div>
         <div class="bq"><span class="bqm">"</span>${esc(text)}"</div>
         <div class="bf">
-          <div class="bbrand">tellme<em>${window.location.hostname ? '.' + window.location.hostname : ''}</em></div>
+          <div class="bbrand">${window.location.hostname || 'tellme.adparlay.com'}</div>
           <div class="bdots">
             <div class="bdot" style="background:${d[0]}"></div>
             <div class="bdot" style="background:${d[1]}"></div>
