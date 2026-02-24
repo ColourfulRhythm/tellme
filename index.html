@@ -578,6 +578,7 @@ function refreshNav(){
 
 // Auto-refresh variables
 let dashRefreshInterval = null;
+let lastDashTotal = null;
 
 function startDashAutoRefresh(){
   // Clear any existing interval
@@ -601,6 +602,28 @@ function openDash(){
   renderDash(); 
   show('dash'); 
   startDashAutoRefresh();
+}
+
+async function refreshDash(){
+  if(!S)return;
+  const btn=document.getElementById('refreshBtn');
+  const originalText=btn?.textContent;
+  if(btn){
+    btn.textContent='↻ Refreshing...';
+    btn.disabled=true;
+  }
+  try{
+    await renderDash();
+    toast('Refreshed!');
+  }catch(e){
+    console.error('Refresh error:',e);
+    toast('Refresh failed');
+  }finally{
+    if(btn){
+      btn.textContent=originalText;
+      btn.disabled=false;
+    }
+  }
 }
 
 /* ====== PIN HELPERS ====== */
@@ -858,6 +881,16 @@ async function renderDash(){
   if(!acc)return;
   const msgs=acc.messages||[];
   const nw=msgs.filter(m=>m.isNew).length;
+  // Alert when new messages arrive (refresh or auto-refresh, not initial load)
+  if(lastDashTotal !== null && msgs.length > lastDashTotal){
+    const added=msgs.length-lastDashTotal;
+    toast(added===1?'New anonymous question!':'You have '+added+' new anonymous questions!');
+    if(document.hidden&&typeof Notification!=='undefined'){
+      if(Notification.permission==='default') Notification.requestPermission();
+      if(Notification.permission==='granted') new Notification('TellMe',{body:added===1?'New anonymous question!':added+' new anonymous questions!'});
+    }
+  }
+  lastDashTotal=msgs.length;
   document.getElementById('dTitle').textContent='@'+S.handle;
   document.getElementById('dSub').textContent='anonymous questions · dashboard';
   document.getElementById('dLink').textContent=getPublicUrl(S.handle);
@@ -868,6 +901,7 @@ async function renderDash(){
   const g=document.getElementById('grid');
   if(!msgs.length){
     g.innerHTML=`<div class="empty"><div class="ei">💌</div><h3>No questions yet</h3><p>Copy your link and share it anywhere.</p></div>`;
+    lastDashTotal=0;
     return;
   }
   g.innerHTML=msgs.map(m=>`
