@@ -1065,22 +1065,67 @@ function downloadCard(){
       ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);
       ctx.closePath();ctx.clip();
       ctx.drawImage(canvas,0,0);
-      const a=document.createElement('a');
-      a.download='tellme-'+bHandle+'-'+Date.now()+'.jpg';
-      a.href=out.toDataURL('image/jpeg',.95);
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      toast('Card downloaded! 🎉');
-      closeModal();
+      
+      const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+      const fileName='tellme-'+bHandle+'-'+Date.now()+'.jpg';
+      
+      function done(){
+        closeModal();
+        if(btn){ btn.textContent=originalText; btn.disabled=false; }
+      }
+      function downloadAsFile(blob,fname){
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.download=fname; a.href=url;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(url),100);
+        toast('Card downloaded! 🎉');
+        done();
+      }
+      
+      if(isIOS&&navigator.share){
+        out.toBlob(function(blob){
+          if(!blob){ toast('Error creating image'); done(); return; }
+          const file=new File([blob],fileName,{type:'image/jpeg'});
+          if(navigator.canShare&&navigator.canShare({files:[file]})){
+            navigator.share({files:[file],title:'TellMe Bento Card'}).then(()=>{
+              toast('Saved! Check Photos or Files app 📱');
+              done();
+            }).catch(err=>{
+              if(err.name!=='AbortError'){
+                const dataUrl=out.toDataURL('image/jpeg',.95);
+                const win=window.open();
+                if(win){
+                  win.document.write('<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+dataUrl+'" style="max-width:100%;max-height:100%;" /></body></html>');
+                  toast('Tap & hold image → Save Image (goes to Photos)');
+                }else downloadAsFile(blob,fileName);
+              }
+              done();
+            });
+          }else{
+            const dataUrl=out.toDataURL('image/jpeg',.95);
+            const win=window.open();
+            if(win){
+              win.document.write('<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+dataUrl+'" style="max-width:100%;max-height:100%;" /></body></html>');
+              toast('Tap & hold image → Save Image (goes to Photos)');
+            }else downloadAsFile(blob,fileName);
+            done();
+          }
+        },'image/jpeg',.95);
+      }else{
+        const a=document.createElement('a');
+        a.download=fileName;
+        a.href=out.toDataURL('image/jpeg',.95);
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        toast('Card downloaded! 🎉');
+        done();
+      }
     }catch(e){
       console.error('Error creating download:',e);
       toast('Error downloading card: '+e.message);
-    }finally{
-      if(btn){
-        btn.textContent=originalText;
-        btn.disabled=false;
-      }
+      if(btn){ btn.textContent=originalText; btn.disabled=false; }
     }
   }).catch(e=>{
     console.error('html2canvas error:',e);
