@@ -39,12 +39,6 @@
   .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(200,245,100,.1);border:1px solid rgba(200,245,100,.25);border-radius:100px;padding:4px 14px;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1px;margin-bottom:26px;text-transform:uppercase;}
   .hero h1{font-family:'Syne',sans-serif;font-size:clamp(42px,9vw,74px);font-weight:800;line-height:1;letter-spacing:-3px;margin-bottom:20px;}
   .hero h1 em{color:var(--accent);font-style:normal;}
-  .letter-swap{display:inline-flex;justify-content:center;align-items:center;overflow:hidden;cursor:default;}
-  .hero h1 #heroSwap.letter-swap{display:block;text-align:center;}
-  .hero h1 #heroSwap.letter-swap .letter-cell{display:inline-flex;}
-  .letter-swap .letter-cell{position:relative;display:inline-flex;overflow:hidden;white-space:pre;}
-  .letter-swap .letter-primary{display:block;transition:transform .45s cubic-bezier(.34,1.56,.64,1);will-change:transform;}
-  .letter-swap .letter-secondary{position:absolute;left:0;display:block;transition:top .45s cubic-bezier(.34,1.56,.64,1);will-change:top;}
   .hero p{font-size:16px;line-height:1.7;color:var(--muted);max-width:400px;margin:0 auto 44px;}
 
   .box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:28px;max-width:420px;margin:0 auto 28px;}
@@ -193,7 +187,7 @@
 <div class="view active" id="view-home">
   <div class="hero">
     <div class="badge">✦ Anonymous Questions</div>
-    <h1>Let them ask.<br><em id="heroSwap">You decide</em><br>what's shared.</h1>
+    <h1>Let them ask.<br><em>You decide</em><br>what's shared.</h1>
     <p>Create your link, collect anonymous questions, download beautiful bento cards to reply on Reels, TikTok, or Stories.</p>
   </div>
 
@@ -1251,58 +1245,6 @@ function getPublicUrl(handle){
   return base.replace(/\/$/, '') + '/#/u/' + handle;
 }
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-/* ====== LETTER-SWAP ANIMATION (vanilla, no React) ====== */
-function letterSwapInit(){
-  const el=document.getElementById('heroSwap');
-  if(!el)return;
-  const label=el.textContent||'';
-  const reverse=true;
-  const stagger=0.025;
-  let blocked=false;
-  const indices=Array.from({length:label.length},(_,i)=>i);
-  const shuffle=()=>indices.slice().sort(()=>Math.random()-0.5);
-
-  el.innerHTML='';
-  el.classList.add('letter-swap');
-  const frag=document.createDocumentFragment();
-  label.split('').forEach((letter,i)=>{
-    const cell=document.createElement('span');
-    cell.className='letter-cell';
-    cell.innerHTML=`<span class="letter-primary letter-${i}">${letter}</span><span class="letter-secondary letter-secondary-${i}" aria-hidden="true" style="top:${reverse?'-100%':'100%'}">${letter}</span>`;
-    frag.appendChild(cell);
-  });
-  el.appendChild(frag);
-
-  const run=()=>{
-    if(blocked)return;
-    blocked=true;
-    const order=shuffle();
-    const duration=450;
-    order.forEach((idx,i)=>{
-      const d=stagger*i*1000;
-      setTimeout(()=>{
-        const prim=el.querySelector('.letter-'+idx);
-        const sec=el.querySelector('.letter-secondary-'+idx);
-        if(!prim||!sec)return;
-        prim.style.transform=`translateY(${reverse?'100%':'-100%'})`;
-        sec.style.top='0%';
-        setTimeout(()=>{
-          prim.style.transition='none';
-          sec.style.transition='none';
-          prim.style.transform='translateY(0)';
-          sec.style.top=reverse?'-100%':'100%';
-          prim.offsetHeight;
-          prim.style.transition='';
-          sec.style.transition='';
-          if(idx===order[order.length-1])blocked=false;
-        },duration);
-      },d);
-    });
-  };
-  el.addEventListener('mouseenter',run);
-}
-
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
@@ -1373,11 +1315,10 @@ function route(){
 })();
 
 window.addEventListener('hashchange',route);
-window.addEventListener('DOMContentLoaded',()=>{
+window.addEventListener('DOMContentLoaded',()=>{ 
   // initSupabase() already called above, will retry if needed
   restoreSession(); // Restore session from localStorage
-  wirePins();
-  letterSwapInit();
+  wirePins(); 
   route(); 
   // If session exists and we're on home page (no hash), show dashboard
   if(S && !location.hash){
