@@ -40,6 +40,8 @@
   .hero h1{font-family:'Syne',sans-serif;font-size:clamp(42px,9vw,74px);font-weight:800;line-height:1;letter-spacing:-3px;margin-bottom:20px;}
   .hero h1 em{color:var(--accent);font-style:normal;}
   .letter-swap{display:inline-flex;justify-content:center;align-items:center;overflow:hidden;cursor:default;}
+  .hero h1 #heroSwap.letter-swap{display:block;text-align:center;}
+  .hero h1 #heroSwap.letter-swap .letter-cell{display:inline-flex;}
   .letter-swap .letter-cell{position:relative;display:inline-flex;overflow:hidden;white-space:pre;}
   .letter-swap .letter-primary{display:block;transition:transform .45s cubic-bezier(.34,1.56,.64,1);will-change:transform;}
   .letter-swap .letter-secondary{position:absolute;left:0;display:block;transition:top .45s cubic-bezier(.34,1.56,.64,1);will-change:top;}
