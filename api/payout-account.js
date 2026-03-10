@@ -55,11 +55,6 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Wrong PIN' });
   }
 
-  const { data: accountRow } = await supabase.from('accounts').select('phone_verified_at').eq('handle', normalizedHandle).single();
-  if (!accountRow?.phone_verified_at) {
-    return res.status(400).json({ error: 'Phone verification required first. Verify your phone in the Earnings section.' });
-  }
-
   const { data: existing } = await supabase.from('payout_accounts').select('handle').eq('handle', normalizedHandle).single();
   if (existing) {
     return res.status(400).json({ error: 'Payout account already set. It cannot be changed.' });
