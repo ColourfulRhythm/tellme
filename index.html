@@ -370,16 +370,7 @@
       <div class="earn-paid-list" id="earnPaidList"></div>
     </div>
     <div class="earn-card">
-      <p class="earn-opay"><strong>OPay payout</strong> — Add your OPay account number to receive payouts. Min ₦5,000. Platform fee: 10%. Phone verification required first.</p>
-      <div id="earnPhoneVerify" style="display:none;">
-        <p class="earn-opay" style="margin-bottom:14px;">📱 Verify your phone number first.</p>
-        <div class="earn-form">
-          <div class="field"><label>Phone</label><input type="tel" id="earnPhone" placeholder="08012345678" /></div>
-          <div class="field" id="earnOtpField" style="display:none;"><label>Code</label><input type="text" id="earnOtp" placeholder="6-digit code" maxlength="6" /></div>
-          <button class="btn" id="earnPhoneBtn" onclick="sendPhoneOtp()">Send code</button>
-          <button class="btn" id="earnVerifyBtn" style="display:none;" onclick="verifyPhoneOtp()">Verify</button>
-        </div>
-      </div>
+      <p class="earn-opay"><strong>OPay payout</strong> — Add your OPay account number to receive payouts. Min ₦5,000. Platform fee: 10%. Your name must match your OPay account name.</p>
       <div id="earnFormArea">
         <div class="earn-form" id="earnForm" style="display:none;">
           <div class="field"><label>Bank</label><input type="text" value="OPay" readonly /></div>
@@ -1121,26 +1112,15 @@ async function showEarnings(){
   }
   if(USE_SUPABASE){
     const pa=await apiGetPayoutAccount(S.handle);
-    const phoneVerified=acc?.phoneVerified===true;
     if(pa){
-      document.getElementById('earnPhoneVerify').style.display='none';
       document.getElementById('earnForm').style.display='none';
       document.getElementById('earnSaved').style.display='block';
       document.getElementById('earnSavedInfo').textContent=(pa.account_number||'').replace(/(\d{3})\d{4}(\d{3})/,'$1****$2')+' · '+(pa.account_name||'');
-    }else if(!phoneVerified){
-      document.getElementById('earnPhoneVerify').style.display='block';
-      document.getElementById('earnForm').style.display='none';
-      document.getElementById('earnSaved').style.display='none';
-      document.getElementById('earnPhoneBtn').style.display='inline-block';
-      document.getElementById('earnVerifyBtn').style.display='none';
-      document.getElementById('earnOtpField').style.display='none';
     }else{
-      document.getElementById('earnPhoneVerify').style.display='none';
       document.getElementById('earnForm').style.display='block';
       document.getElementById('earnSaved').style.display='none';
     }
   }else{
-    document.getElementById('earnPhoneVerify').style.display='none';
     document.getElementById('earnForm').style.display='block';
     document.getElementById('earnSaved').style.display='none';
   }
