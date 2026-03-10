@@ -771,16 +771,13 @@ async function register(){
   // Always use Supabase when configured
   if(USE_SUPABASE){
     try{
-      // Register in Supabase (source of truth)
       await apiRegister(handle,pin);
-      // Registration successful - update localStorage cache
-      const accs=allAccs();
-      delete accs[normalizedHandle];
-      saveAll(accs);
+      const fresh={handle:normalizedHandle,pinHash:'',messages:[],createdAt:Date.now(),phoneVerified:false};
+      _cachedAcc=fresh;
       putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:[],createdAt:Date.now()});
       S={handle:normalizedHandle};
       refreshNav();
-      await renderDash();
+      await renderDash(false);
       show('dash');
       toast('Link created! Share it 🎉');
     }catch(e){
@@ -841,20 +838,26 @@ async function login(){
   // Always use Supabase when configured
   if(USE_SUPABASE){
     try{
-      // Login against Supabase (source of truth)
-      await apiLogin(normalizedHandle,pin);
-      const acc=await apiGetAccount(normalizedHandle);
-      if(acc){
-        putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:acc.messages||[],createdAt:acc.createdAt||Date.now()});
-      }
+      // Single query: fetch account + messages in parallel, verify PIN client-side
+      const [{data:account,error:accErr},{data:messages}]=await Promise.all([
+        supabaseClient.from('accounts').select('handle,pin_hash,created_at,phone,phone_verified_at').eq('handle',normalizedHandle).single(),
+        supabaseClient.from('messages').select('id,text,is_new,created_at,amount_ngn,is_priority').eq('handle',normalizedHandle).order('created_at',{ascending:false})
+      ]);
+      if(accErr||!account) throw new Error(`Account @${normalizedHandle} not found. Did you register?`);
+      if(account.pin_hash!==hashPin(pin)) throw new Error('Wrong PIN. Please try again.');
+      const formattedMessages=(messages||[]).map(msg=>{
+        const d=new Date(msg.created_at);
+        return{id:msg.id,text:msg.text,isNew:msg.is_new===true||msg.is_new===1,amountNgn:msg.amount_ngn||0,isPriority:msg.is_priority===true||msg.is_priority===1,time:d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),date:d.toLocaleDateString([],{month:'short',day:'numeric'})};
+      });
+      const acc={handle:account.handle,pinHash:'',messages:formattedMessages,createdAt:account.created_at,phoneVerified:!!account.phone_verified_at};
+      _cachedAcc=acc;
+      putAcc(normalizedHandle,{handle:normalizedHandle,pinHash:hashPin(pin),messages:formattedMessages,createdAt:acc.createdAt||Date.now()});
       S={handle:normalizedHandle};
       refreshNav();
       await renderDash(false);
       show('dash');
       clearLogin();
     }catch(e){
-      // Login failed - Supabase is source of truth
-      // Clear any stale localStorage cache (it's just a cache, database is real)
       const accs=allAccs();
       delete accs[normalizedHandle];
       saveAll(accs);
