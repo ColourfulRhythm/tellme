@@ -76,5 +76,5 @@ function getCallbackUrl(req) {
   const host = req.headers['x-forwarded-host'] || req.headers['host'] || 'localhost:3000';
   const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   const base = `${proto}://${host}`.replace(/\/$/, '');
-  return base + '/tellme.html#/callback';
+  return base + '/';
 }
