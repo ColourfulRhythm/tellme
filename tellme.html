@@ -88,6 +88,31 @@
   .sent h3{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px;}
   .sent p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:18px;}
 
+  .pay-opt{text-align:left;margin:16px 0;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;}
+  .pay-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
+  .pay-presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .pay-chip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;}
+  .pay-chip:hover{border-color:var(--accent2);color:var(--accent2);}
+  .pay-chip.active{background:rgba(124,106,255,.2);border-color:var(--accent2);color:var(--accent2);}
+  .pay-custom input{width:100px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);}
+  .pay-custom input:focus{border-color:var(--accent2);outline:none;}
+
+  .mc.paid{border-color:rgba(200,245,100,.35);}
+  .mc .amt{display:inline-flex;align-items:center;background:rgba(200,245,100,.15);border:1px solid rgba(200,245,100,.3);border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:var(--accent);}
+
+  .earn-view{max-width:520px;margin:0 auto;padding:40px 24px 80px;}
+  .earn-view h2{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:6px;}
+  .earn-view .sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
+  .earn-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:20px;}
+  .earn-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+  .earn-row:last-child{border-bottom:none;}
+  .earn-row .val{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--accent);}
+  .earn-opay{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:12px;color:var(--muted);font-size:12px;}
+  .earn-opay strong{color:var(--text);}
+  .earn-form .field{margin-bottom:14px;}
+  .earn-form input[readonly]{opacity:.8;cursor:not-allowed;}
+  .earn-warn{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.25);border-radius:12px;padding:14px;font-size:13px;color:var(--danger);margin-bottom:16px;}
+
   /* DASHBOARD */
   .dash{max-width:920px;margin:0 auto;padding:40px 24px 80px;}
   .dh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:26px;gap:14px;flex-wrap:wrap;}
@@ -263,7 +288,21 @@
       <div id="askForm">
         <textarea id="askMsg" placeholder="Ask anything... they'll never know it's you 👀" maxlength="280" oninput="upCC()"></textarea>
         <div class="cc" id="cc">0 / 280</div>
-        <button class="btn-send" onclick="sendQ()">Send anonymously →</button>
+        <div class="pay-opt">
+          <div class="pay-label">Optional: Prioritize with payment (₦500–₦5,000)</div>
+          <div class="pay-presets">
+            <button type="button" class="pay-chip" data-amount="0" onclick="setPayAmount(0,this)">Free</button>
+            <button type="button" class="pay-chip" data-amount="500" onclick="setPayAmount(500,this)">₦500</button>
+            <button type="button" class="pay-chip" data-amount="1000" onclick="setPayAmount(1000,this)">₦1k</button>
+            <button type="button" class="pay-chip" data-amount="2000" onclick="setPayAmount(2000,this)">₦2k</button>
+            <button type="button" class="pay-chip" data-amount="3000" onclick="setPayAmount(3000,this)">₦3k</button>
+            <button type="button" class="pay-chip" data-amount="5000" onclick="setPayAmount(5000,this)">₦5k</button>
+          </div>
+          <div class="pay-custom">
+            <input type="number" id="payCustom" placeholder="Custom ₦" min="500" max="50000" step="100" onchange="setPayAmount(null, null)" />
+          </div>
+        </div>
+        <button class="btn-send" id="sendBtn" onclick="sendQ()">Send anonymously →</button>
       </div>
 
       <div class="sent" id="sentBox" style="display:none">
@@ -286,6 +325,7 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <button class="sm" onclick="refreshDash()" id="refreshBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">↻ Refresh</button>
+        <button class="sm" onclick="showEarnings()" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--accent);cursor:pointer;transition:all .2s;">💰 Earnings</button>
       <button class="lout" onclick="logout()">Log out</button>
       </div>
     </div>
@@ -307,6 +347,45 @@
 
     <div class="sl" id="slabel"></div>
     <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<!-- EARNINGS -->
+<div class="view" id="view-earnings">
+  <div class="earn-view">
+    <h2>Earnings</h2>
+    <p class="sub">Your payout details & balance</p>
+    <div class="earn-card" id="earnStats">
+      <div class="earn-row"><span>Total earned</span><span class="val" id="earnTotal">₦0</span></div>
+      <div class="earn-row"><span>Platform fee (10%)</span><span class="val" id="earnFee">₦0</span></div>
+      <div class="earn-row"><span>Your net</span><span class="val" id="earnNet">₦0</span></div>
+      <div class="earn-row" style="font-size:12px;color:var(--muted);"><span>Min. payout</span><span>₦5,000</span></div>
+    </div>
+    <div class="earn-card">
+      <p class="earn-opay"><strong>OPay payout</strong> — Add your OPay account number to receive payouts at month end. Minimum ₦5,000 to withdraw. Platform fee: 10%.</p>
+      <div id="earnPhoneVerify" style="display:none;">
+        <p class="earn-opay" style="margin-bottom:14px;">📱 Verify your phone number to add payout details.</p>
+        <div class="earn-form">
+          <div class="field"><label>Phone number</label><input type="tel" id="earnPhone" placeholder="08012345678 or +2348012345678" /></div>
+          <div class="field" id="earnOtpField" style="display:none;"><label>Verification code</label><input type="text" id="earnOtp" placeholder="6-digit code" maxlength="6" inputmode="numeric" /></div>
+          <button class="btn" id="earnPhoneBtn" onclick="sendPhoneOtp()">Send verification code</button>
+          <button class="btn" id="earnVerifyBtn" style="display:none;" onclick="verifyPhoneOtp()">Verify & continue</button>
+        </div>
+      </div>
+      <div id="earnFormArea">
+        <div class="earn-form" id="earnForm" style="display:none;">
+          <div class="field"><label>Bank</label><input type="text" value="OPay" readonly /></div>
+          <div class="field"><label>Account number (10 digits)</label><input type="text" id="earnAccNum" placeholder="1234567890" maxlength="10" inputmode="numeric" pattern="[0-9]*" /></div>
+          <div class="field"><label>Account name</label><input type="text" id="earnAccName" placeholder="Full name on OPay" /></div>
+          <div class="earn-warn">⚠️ Ensure details are correct. You will NOT be able to change them after saving.</div>
+          <button class="btn" onclick="savePayoutAccount()">Save payout details</button>
+        </div>
+        <div id="earnSaved" style="display:none;">
+          <p class="earn-opay">✅ Payout account set: <strong id="earnSavedInfo"></strong></p>
+        </div>
+      </div>
+    </div>
+    <button class="btn ghost" onclick="show('dash')">← Back to inbox</button>
   </div>
 </div>
 
@@ -340,6 +419,19 @@
 // Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel dashboard: Settings → Environment Variables
 const SUPABASE_URL = 'ENV_SUPABASE_URL';
 const SUPABASE_ANON_KEY = 'ENV_SUPABASE_ANON_KEY';
+
+// Payment config
+const PLATFORM_CUT = 0.1;
+const MIN_PAYOUT = 5000;
+const AMOUNT_PRESETS = [500, 1000, 2000, 3000, 5000];
+const MIN_PAY = 500;
+const MAX_PAY = 50000;
+
+function getApiBase() {
+  if (typeof window === 'undefined') return '';
+  const o = window.location.origin;
+  return o && o !== 'null' ? o : '';
+}
 
 // Initialize Supabase client
 let supabaseClient = null;
@@ -451,7 +543,7 @@ async function apiGetAccount(handle){
   // Get account
   const {data:account,error:accError}=await supabaseClient
     .from('accounts')
-    .select('handle,created_at')
+    .select('handle,created_at,phone,phone_verified_at')
     .eq('handle',normalizedHandle)
     .single();
   
@@ -460,7 +552,7 @@ async function apiGetAccount(handle){
   // Get messages
   const {data:messages,error:msgError}=await supabaseClient
     .from('messages')
-    .select('id,text,is_new,created_at')
+    .select('id,text,is_new,created_at,amount_ngn,is_priority')
     .eq('handle',normalizedHandle)
     .order('created_at',{ascending:false});
   
@@ -473,6 +565,8 @@ async function apiGetAccount(handle){
       id:msg.id,
       text:msg.text,
       isNew:msg.is_new===true||msg.is_new===1,
+      amountNgn:msg.amount_ngn||0,
+      isPriority:msg.is_priority===true||msg.is_priority===1,
       time:date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
       date:date.toLocaleDateString([],{month:'short',day:'numeric'})
     };
@@ -482,7 +576,9 @@ async function apiGetAccount(handle){
     handle:account.handle,
     pinHash:'', // Not returned for security
     messages:formattedMessages,
-    createdAt:account.created_at
+    createdAt:account.created_at,
+    phoneVerified:!!account.phone_verified_at,
+    phone:account.phone||null
   };
 }
 
@@ -821,6 +917,23 @@ function logout(){ S=null; saveSession(); refreshNav(); goHome(); toast('Logged 
 
 /* ====== ASK PAGE ====== */
 let askTarget=null;
+let askPayAmount=0;
+
+function setPayAmount(amt,el){
+  if(amt!==null&&amt!==undefined){
+    askPayAmount=amt;
+    const custom=document.getElementById('payCustom');
+    if(custom){ custom.value=amt>0?amt:''; }
+  }else{
+    const custom=document.getElementById('payCustom');
+    const v=parseInt(custom?.value,10);
+    askPayAmount=(!isNaN(v)&&v>=MIN_PAY&&v<=MAX_PAY)?v:0;
+  }
+  document.querySelectorAll('.pay-chip').forEach(c=>{
+    const a=parseInt(c.dataset.amount,10);
+    c.classList.toggle('active',a===askPayAmount);
+  });
+}
 
 async function loadAsk(handle){
   if(!handle || handle.trim()===''){
@@ -850,10 +963,14 @@ async function loadAsk(handle){
   }
   
   askTarget=handle;
+  askPayAmount=0;
+  setPayAmount(0);
   document.getElementById('askAv').textContent=handle.charAt(0).toUpperCase();
   document.getElementById('askName').textContent='@'+handle;
   document.getElementById('askMsg').value='';
   document.getElementById('cc').textContent='0 / 280';
+  const payCustom=document.getElementById('payCustom');
+  if(payCustom) payCustom.value='';
   document.getElementById('askForm').style.display='block';
   document.getElementById('sentBox').style.display='none';
   // Minimal nav on ask page
@@ -869,7 +986,32 @@ function upCC(){
 async function sendQ(){
   const txt=document.getElementById('askMsg').value.trim();
   if(!txt||!askTarget)return;
-  
+
+  const amt=askPayAmount>=MIN_PAY&&askPayAmount<=MAX_PAY?askPayAmount:0;
+  const btn=document.getElementById('sendBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Please wait...'; }
+
+  if(amt>0){
+    try{
+      const base=getApiBase();
+      const r=await fetch(base+'/api/paystack/initialize',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({handle:askTarget,text:txt,amount_ngn:amt}),
+      });
+      const data=await r.json();
+      if(data.authorization_url){
+        window.location.href=data.authorization_url;
+        return;
+      }
+      throw new Error(data.error||'Payment failed');
+    }catch(e){
+      alert('Payment error: '+(e.message||'Unknown error'));
+      if(btn){ btn.disabled=false; btn.textContent='Send anonymously →'; }
+      return;
+    }
+  }
+
   if(USE_SUPABASE){
     try{
       await apiSendQuestion(askTarget,txt);
@@ -877,6 +1019,8 @@ async function sendQ(){
       document.getElementById('sentBox').style.display='block';
     }catch(e){
       alert('Failed to send question: '+(e.message||'Unknown error'));
+    }finally{
+      if(btn){ btn.disabled=false; btn.textContent='Send anonymously →'; }
     }
   }else{
     // Fallback to localStorage
@@ -886,6 +1030,7 @@ async function sendQ(){
   const now=new Date();
   acc.messages.unshift({
     id:Date.now(),text:txt,
+    amountNgn:0,isPriority:false,
     time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
     date:now.toLocaleDateString([],{month:'short',day:'numeric'}),
     isNew:true
@@ -894,6 +1039,7 @@ async function sendQ(){
   document.getElementById('askForm').style.display='none';
   document.getElementById('sentBox').style.display='block';
   }
+  if(btn){ btn.disabled=false; btn.textContent='Send anonymously →'; }
 }
 
 function resetAsk(){
@@ -940,10 +1086,11 @@ async function renderDash(){
     lastDashTotal=0;
     return;
   }
-  g.innerHTML=msgs.map(m=>`
-    <div class="mc ${m.isNew?'isnew':''}" id="mc${m.id}">
+  const sorted=[...msgs].sort((a,b)=>(b.isPriority?1:0)-(a.isPriority?1:0)||b.id-a.id);
+  g.innerHTML=sorted.map(m=>`
+    <div class="mc ${m.isNew?'isnew':''} ${m.isPriority?'paid':''}" id="mc${m.id}">
       <div class="mt">"${esc(m.text)}"</div>
-      <div class="mm">${m.isNew?'<span class="nd"></span>':''}${m.date} · ${m.time}</div>
+      <div class="mm">${m.isNew?'<span class="nd"></span>':''}${m.isPriority&&m.amountNgn?`<span class="amt">₦${m.amountNgn.toLocaleString()}</span> `:''}${m.date} · ${m.time}</div>
       <div class="ma">
         <button class="bbn" onclick="openBento(${m.id})">Download Bento ↓</button>
         <button class="del" onclick="delMsg(${m.id})">✕</button>
@@ -983,6 +1130,140 @@ async function delMsg(id){
   acc.messages=acc.messages.filter(m=>m.id!==id);
   putAcc(S.handle,acc);
   renderDash();
+  }
+}
+
+async function showEarnings(){
+  show('earnings');
+  if(!S)return;
+  let acc=null;
+  if(USE_SUPABASE) acc=await apiGetAccount(S.handle);
+  else acc=getAcc(S.handle);
+  const msgs=acc?.messages||[];
+  const totalEarned=msgs.reduce((s,m)=>(m.amountNgn||0)+s,0);
+  const fee=Math.floor(totalEarned*PLATFORM_CUT);
+  const net=totalEarned-fee;
+  document.getElementById('earnTotal').textContent='₦'+totalEarned.toLocaleString();
+  document.getElementById('earnFee').textContent='₦'+fee.toLocaleString();
+  document.getElementById('earnNet').textContent='₦'+net.toLocaleString();
+  if(USE_SUPABASE){
+    const pa=await apiGetPayoutAccount(S.handle);
+    const phoneVerified=acc?.phoneVerified===true;
+    if(pa){
+      document.getElementById('earnPhoneVerify').style.display='none';
+      document.getElementById('earnForm').style.display='none';
+      document.getElementById('earnSaved').style.display='block';
+      document.getElementById('earnSavedInfo').textContent=pa.account_number.replace(/(\d{3})\d{4}(\d{3})/,'$1****$2')+' · '+pa.account_name;
+    }else if(!phoneVerified){
+      document.getElementById('earnPhoneVerify').style.display='block';
+      document.getElementById('earnForm').style.display='none';
+      document.getElementById('earnSaved').style.display='none';
+      document.getElementById('earnPhoneBtn').style.display='inline-block';
+      document.getElementById('earnVerifyBtn').style.display='none';
+      document.getElementById('earnOtpField').style.display='none';
+    }else{
+      document.getElementById('earnPhoneVerify').style.display='none';
+      document.getElementById('earnForm').style.display='block';
+      document.getElementById('earnSaved').style.display='none';
+    }
+  }else{
+    document.getElementById('earnPhoneVerify').style.display='none';
+    document.getElementById('earnForm').style.display='block';
+    document.getElementById('earnSaved').style.display='none';
+  }
+}
+
+function normalizePhone(phone){
+  const s=String(phone||'').replace(/\D/g,'');
+  if(s.length===10) return '+234'+s;
+  if(s.length===11&&s.startsWith('0')) return '+234'+s.slice(1);
+  if(s.length===13&&s.startsWith('234')) return '+'+s;
+  if(s.startsWith('+')) return s;
+  return '+234'+s.replace(/^0/,'');
+}
+
+async function sendPhoneOtp(){
+  const phone=document.getElementById('earnPhone').value.trim();
+  if(!phone){ alert('Enter your phone number'); return; }
+  const norm=normalizePhone(phone);
+  if(norm.length<12){ alert('Enter a valid Nigerian number (e.g. 08012345678)'); return; }
+  const btn=document.getElementById('earnPhoneBtn');
+  btn.disabled=true; btn.textContent='Sending...';
+  try{
+    const {error}=await supabaseClient.auth.signInWithOtp({phone:norm});
+    if(error) throw error;
+    document.getElementById('earnOtpField').style.display='block';
+    document.getElementById('earnVerifyBtn').style.display='inline-block';
+    btn.textContent='Resend code'; btn.disabled=false;
+    toast('Code sent! Check your phone.');
+  }catch(e){
+    btn.disabled=false; btn.textContent='Send verification code';
+    alert(e.message||'Failed to send code. Enable Phone auth in Supabase.');
+  }
+}
+
+async function verifyPhoneOtp(){
+  const phone=document.getElementById('earnPhone').value.trim();
+  const otp=document.getElementById('earnOtp').value.trim();
+  if(!phone||!otp){ alert('Enter phone and verification code'); return; }
+  const norm=normalizePhone(phone);
+  const btn=document.getElementById('earnVerifyBtn');
+  btn.disabled=true; btn.textContent='Verifying...';
+  try{
+    const {data,error}=await supabaseClient.auth.verifyOtp({phone:norm,token:otp,type:'sms'});
+    if(error) throw error;
+    const token=data?.session?.access_token;
+    if(!token){ throw new Error('Verification failed'); }
+    const pin=prompt('Enter your 4-digit PIN to confirm');
+    if(!pin||pin.length!==4){ btn.disabled=false; btn.textContent='Verify & continue'; return; }
+    const r=await fetch(getApiBase()+'/api/verify-phone',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({handle:S.handle,pin:pin,phone:norm}),
+    });
+    const d=await r.json();
+    if(d.success){
+      toast('Phone verified!');
+      showEarnings();
+    }else{
+      alert(d.error||'Failed to save');
+    }
+  }catch(e){
+    alert(e.message||'Verification failed');
+  }
+  btn.disabled=false; btn.textContent='Verify & continue';
+}
+
+async function apiGetPayoutAccount(handle){
+  if(!USE_SUPABASE) return null;
+  const {data}=await supabaseClient.from('payout_accounts').select('account_number,account_name').eq('handle',handle.toLowerCase()).single();
+  return data;
+}
+
+async function savePayoutAccount(){
+  if(!S)return;
+  const accNum=document.getElementById('earnAccNum').value.replace(/\D/g,'');
+  const accName=document.getElementById('earnAccName').value.trim();
+  if(accNum.length!==10){ alert('OPay account number must be 10 digits'); return; }
+  if(accName.length<2){ alert('Enter account name'); return; }
+  if(!confirm('You will NOT be able to change these details later. Is everything correct?\n\nAccount: '+accNum+'\nName: '+accName)) return;
+  const pin=prompt('Enter your 4-digit PIN to confirm');
+  if(!pin||pin.length!==4){ alert('Valid 4-digit PIN required'); return; }
+  try{
+    const r=await fetch(getApiBase()+'/api/payout-account',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle:S.handle,pin:pin,account_number:accNum,account_name:accName}),
+    });
+    const d=await r.json();
+    if(d.success){
+      toast('Payout account saved!');
+      showEarnings();
+    }else{
+      alert(d.error||'Failed to save');
+    }
+  }catch(e){
+    alert('Error: '+(e.message||'Network error'));
   }
 }
 
@@ -1290,9 +1571,35 @@ function wirePins(){
   });
 }
 
+/* ====== CALLBACK (after Paystack payment) ====== */
+async function handleCallback(){
+  const params=new URLSearchParams(location.search);
+  const ref=params.get('reference')||params.get('trxref');
+  if(!ref) return;
+  show('home');
+  try{
+    const r=await fetch(getApiBase()+'/api/paystack/verify?reference='+encodeURIComponent(ref));
+    const d=await r.json();
+    if(d.success){
+      toast('Payment successful! Your priority question was sent 🎉');
+    }else{
+      toast(d.error||'Verification failed');
+    }
+  }catch(e){
+    toast('Error: '+e.message);
+  }
+  const u=new URL(location.href);
+  u.search='';
+  history.replaceState(null,'',u.pathname||'/tellme.html');
+}
+
 /* ====== ROUTING ====== */
 function route(){
   const h=location.hash;
+  if(location.search.includes('reference=')){
+    handleCallback();
+    return;
+  }
   if(h.startsWith('#/u/')){
     const handle=h.slice(4).split('?')[0].trim();
     if(handle){ 

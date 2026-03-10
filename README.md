@@ -6,10 +6,11 @@ A beautiful, privacy-focused anonymous Q&A platform. Users create a link with a 
 
 - ✨ **No Email Required** - Just a handle and 4-digit PIN
 - 🔒 **100% Anonymous** - Questions are completely anonymous
+- 💰 **Optional Paid Priority** - Submitters can attach ₦500–₦5,000 (via Paystack) to prioritize questions
 - 🎨 **Beautiful Bento Cards** - Download styled question cards for Reels, TikTok, Stories
 - 📱 **Mobile Responsive** - Works perfectly on all devices
-- 💾 **Client-Side Storage** - All data stored locally in browser (privacy-first)
-- 🎯 **Simple & Fast** - Single HTML file, no backend needed
+- 💾 **Client-Side Storage** - All data stored locally in browser (privacy-first) or Supabase
+- 🎯 **Simple & Fast** - Single HTML file, optional backend
 
 ## Quick Start
 
@@ -80,9 +81,14 @@ Then open `http://localhost:8000/tellme.html` in your browser.
 
 1. **Create Account**: User picks a handle (e.g., "alex") and a 4-digit PIN
 2. **Get Link**: User receives a public link like `yoursite.com/#/u/alex`
-3. **Share Link**: Anyone can visit the link and ask anonymous questions
-4. **View Dashboard**: User logs in with handle + PIN to see all questions
-5. **Download Cards**: User can download beautiful "bento cards" to reply on social media
+3. **Share Link**: Anyone can visit the link and ask anonymous questions (optionally pay ₦500–₦5,000 to prioritize)
+4. **View Dashboard**: User logs in with handle + PIN to see all questions (paid ones pinned at top)
+5. **Earnings**: Creators can add OPay payout details; 90% of paid amounts go to them, 10% platform fee
+6. **Download Cards**: User can download beautiful "bento cards" to reply on social media
+
+## Payments (Paystack)
+
+For paid priority questions, set up Paystack: see [`PAYSTACK_SETUP.md`](./PAYSTACK_SETUP.md).
 
 ## Data Storage
 
