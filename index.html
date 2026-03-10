@@ -123,6 +123,19 @@
   .empty .ei{font-size:48px;margin-bottom:14px;}
   .empty h3{font-family:'Syne',sans-serif;font-size:18px;color:var(--text);margin-bottom:6px;}
 
+  .earn-view{max-width:520px;margin:0 auto;padding:40px 24px 80px;}
+  .earn-view h2{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:6px;}
+  .earn-view .sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
+  .earn-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:20px;}
+  .earn-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+  .earn-row:last-child{border-bottom:none;}
+  .earn-row .val{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--accent);}
+  .earn-opay{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:12px;color:var(--muted);font-size:12px;}
+  .earn-opay strong{color:var(--text);}
+  .earn-form .field{margin-bottom:14px;}
+  .earn-form input[readonly]{opacity:.8;cursor:not-allowed;}
+  .earn-warn{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.25);border-radius:12px;padding:14px;font-size:13px;color:var(--danger);margin-bottom:16px;}
+
   /* BENTO MODAL */
   .overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:24px;}
   .overlay.show{display:flex;animation:fi .2s ease;}
@@ -286,6 +299,7 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <button class="sm" onclick="refreshDash()" id="refreshBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">↻ Refresh</button>
+        <button class="sm" onclick="showEarnings()" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--accent);cursor:pointer;transition:all .2s;">💰 Earnings</button>
       <button class="lout" onclick="logout()">Log out</button>
       </div>
     </div>
@@ -307,6 +321,42 @@
 
     <div class="sl" id="slabel"></div>
     <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<!-- EARNINGS -->
+<div class="view" id="view-earnings">
+  <div class="earn-view">
+    <h2>Earnings</h2>
+    <p class="sub">Your payout details & balance</p>
+    <div class="earn-card" id="earnStats">
+      <div class="earn-row"><span>Total earned</span><span class="val" id="earnTotal">₦0</span></div>
+      <div class="earn-row"><span>Platform fee (10%)</span><span class="val" id="earnFee">₦0</span></div>
+      <div class="earn-row"><span>Your net</span><span class="val" id="earnNet">₦0</span></div>
+    </div>
+    <div class="earn-card">
+      <p class="earn-opay"><strong>OPay payout</strong> — Add your OPay account number to receive payouts. Min ₦5,000. Platform fee: 10%. Phone verification required first.</p>
+      <div id="earnPhoneVerify" style="display:none;">
+        <p class="earn-opay" style="margin-bottom:14px;">📱 Verify your phone number first.</p>
+        <div class="earn-form">
+          <div class="field"><label>Phone</label><input type="tel" id="earnPhone" placeholder="08012345678" /></div>
+          <div class="field" id="earnOtpField" style="display:none;"><label>Code</label><input type="text" id="earnOtp" placeholder="6-digit code" maxlength="6" /></div>
+          <button class="btn" id="earnPhoneBtn" onclick="sendPhoneOtp()">Send code</button>
+          <button class="btn" id="earnVerifyBtn" style="display:none;" onclick="verifyPhoneOtp()">Verify</button>
+        </div>
+      </div>
+      <div id="earnFormArea">
+        <div class="earn-form" id="earnForm" style="display:none;">
+          <div class="field"><label>Bank</label><input type="text" value="OPay" readonly /></div>
+          <div class="field"><label>Account number</label><input type="text" id="earnAccNum" placeholder="10 digits" maxlength="10" /></div>
+          <div class="field"><label>Account name</label><input type="text" id="earnAccName" placeholder="Full name on OPay" /></div>
+          <div class="earn-warn">⚠️ Cannot be changed after saving.</div>
+          <button class="btn" onclick="savePayoutAccount()">Save payout details</button>
+        </div>
+        <div id="earnSaved" style="display:none;"><p class="earn-opay">✅ Payout account set: <strong id="earnSavedInfo"></strong></p></div>
+      </div>
+    </div>
+    <button class="btn ghost" onclick="show('dash')">← Back to inbox</button>
   </div>
 </div>
 
@@ -340,6 +390,8 @@
 // Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel dashboard: Settings → Environment Variables
 const SUPABASE_URL = 'ENV_SUPABASE_URL';
 const SUPABASE_ANON_KEY = 'ENV_SUPABASE_ANON_KEY';
+const PLATFORM_CUT = 0.1;
+function getApiBase(){ return (typeof window!=='undefined'&&window.location.origin)||''; }
 
 // Initialize Supabase client
 let supabaseClient = null;
@@ -446,7 +498,7 @@ async function apiGetAccount(handle){
   // Get account
   const {data:account,error:accError}=await supabaseClient
     .from('accounts')
-    .select('handle,created_at')
+    .select('handle,created_at,phone,phone_verified_at')
     .eq('handle',normalizedHandle)
     .single();
   
@@ -455,7 +507,7 @@ async function apiGetAccount(handle){
   // Get messages
   const {data:messages,error:msgError}=await supabaseClient
     .from('messages')
-    .select('id,text,is_new,created_at')
+    .select('id,text,is_new,created_at,amount_ngn,is_priority')
     .eq('handle',normalizedHandle)
     .order('created_at',{ascending:false});
   
@@ -468,6 +520,8 @@ async function apiGetAccount(handle){
       id:msg.id,
       text:msg.text,
       isNew:msg.is_new===true||msg.is_new===1,
+      amountNgn:msg.amount_ngn||0,
+      isPriority:msg.is_priority===true||msg.is_priority===1,
       time:date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
       date:date.toLocaleDateString([],{month:'short',day:'numeric'})
     };
@@ -477,7 +531,8 @@ async function apiGetAccount(handle){
     handle:account.handle,
     pinHash:'', // Not returned for security
     messages:formattedMessages,
-    createdAt:account.created_at
+    createdAt:account.created_at,
+    phoneVerified:!!account.phone_verified_at
   };
 }
 
@@ -953,6 +1008,107 @@ async function delMsg(id){
   putAcc(S.handle,acc);
   renderDash();
   }
+}
+
+async function showEarnings(){
+  show('earnings');
+  if(!S)return;
+  let acc=null;
+  if(USE_SUPABASE) acc=await apiGetAccount(S.handle);
+  else acc=getAcc(S.handle);
+  const msgs=acc?.messages||[];
+  const totalEarned=msgs.reduce((s,m)=>(m.amountNgn||0)+s,0);
+  const fee=Math.floor(totalEarned*PLATFORM_CUT);
+  const net=totalEarned-fee;
+  document.getElementById('earnTotal').textContent='₦'+totalEarned.toLocaleString();
+  document.getElementById('earnFee').textContent='₦'+fee.toLocaleString();
+  document.getElementById('earnNet').textContent='₦'+net.toLocaleString();
+  if(USE_SUPABASE){
+    const pa=await apiGetPayoutAccount(S.handle);
+    const phoneVerified=acc?.phoneVerified===true;
+    if(pa){
+      document.getElementById('earnPhoneVerify').style.display='none';
+      document.getElementById('earnForm').style.display='none';
+      document.getElementById('earnSaved').style.display='block';
+      document.getElementById('earnSavedInfo').textContent=(pa.account_number||'').replace(/(\d{3})\d{4}(\d{3})/,'$1****$2')+' · '+(pa.account_name||'');
+    }else if(!phoneVerified){
+      document.getElementById('earnPhoneVerify').style.display='block';
+      document.getElementById('earnForm').style.display='none';
+      document.getElementById('earnSaved').style.display='none';
+      document.getElementById('earnPhoneBtn').style.display='inline-block';
+      document.getElementById('earnVerifyBtn').style.display='none';
+      document.getElementById('earnOtpField').style.display='none';
+    }else{
+      document.getElementById('earnPhoneVerify').style.display='none';
+      document.getElementById('earnForm').style.display='block';
+      document.getElementById('earnSaved').style.display='none';
+    }
+  }else{
+    document.getElementById('earnPhoneVerify').style.display='none';
+    document.getElementById('earnForm').style.display='block';
+    document.getElementById('earnSaved').style.display='none';
+  }
+}
+
+async function apiGetPayoutAccount(handle){
+  if(!USE_SUPABASE) return null;
+  const {data}=await supabaseClient.from('payout_accounts').select('account_number,account_name').eq('handle',handle.toLowerCase()).maybeSingle();
+  return data;
+}
+
+function normalizePhone(p){ const s=String(p||'').replace(/\D/g,''); if(s.length===10) return '+234'+s; if(s.length===11&&s.startsWith('0')) return '+234'+s.slice(1); return s.startsWith('+')?s:'+234'+s.replace(/^0/,''); }
+
+async function sendPhoneOtp(){
+  const phone=document.getElementById('earnPhone')?.value?.trim();
+  if(!phone){ alert('Enter phone number'); return; }
+  const norm=normalizePhone(phone);
+  const btn=document.getElementById('earnPhoneBtn');
+  btn.disabled=true; btn.textContent='Sending...';
+  try{
+    const {error}=await supabaseClient.auth.signInWithOtp({phone:norm});
+    if(error) throw error;
+    document.getElementById('earnOtpField').style.display='block';
+    document.getElementById('earnVerifyBtn').style.display='inline-block';
+    btn.textContent='Resend'; btn.disabled=false;
+    toast('Code sent!');
+  }catch(e){ btn.disabled=false; btn.textContent='Send code'; alert(e.message||'Failed. Enable Phone auth in Supabase.'); }
+}
+
+async function verifyPhoneOtp(){
+  const phone=document.getElementById('earnPhone')?.value?.trim(), otp=document.getElementById('earnOtp')?.value?.trim();
+  if(!phone||!otp){ alert('Enter phone and code'); return; }
+  const norm=normalizePhone(phone);
+  const btn=document.getElementById('earnVerifyBtn');
+  btn.disabled=true; btn.textContent='Verifying...';
+  try{
+    const {data,error}=await supabaseClient.auth.verifyOtp({phone:norm,token:otp,type:'sms'});
+    if(error) throw error;
+    const token=data?.session?.access_token;
+    if(!token) throw new Error('Verification failed');
+    const pin=prompt('Enter your 4-digit PIN');
+    if(!pin||pin.length!==4){ btn.disabled=false; btn.textContent='Verify'; return; }
+    const r=await fetch(getApiBase()+'/api/verify-phone',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({handle:S.handle,pin,phone:norm})});
+    const d=await r.json();
+    if(d.success){ toast('Phone verified!'); showEarnings(); }
+    else alert(d.error||'Failed');
+  }catch(e){ alert(e.message||'Failed'); }
+  btn.disabled=false; btn.textContent='Verify';
+}
+
+async function savePayoutAccount(){
+  if(!S)return;
+  const accNum=(document.getElementById('earnAccNum')?.value||'').replace(/\D/g,''), accName=(document.getElementById('earnAccName')?.value||'').trim();
+  if(accNum.length!==10){ alert('OPay account must be 10 digits'); return; }
+  if(accName.length<2){ alert('Enter account name'); return; }
+  if(!confirm('Details cannot be changed later. Correct?\n\n'+accNum+'\n'+accName)) return;
+  const pin=prompt('Enter your 4-digit PIN');
+  if(!pin||pin.length!==4){ alert('PIN required'); return; }
+  try{
+    const r=await fetch(getApiBase()+'/api/payout-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle:S.handle,pin,account_number:accNum,account_name:accName})});
+    const d=await r.json();
+    if(d.success){ toast('Saved!'); showEarnings(); }
+    else alert(d.error||'Failed');
+  }catch(e){ alert(e.message||'Error'); }
 }
 
 function copyLink(){
