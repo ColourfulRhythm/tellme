@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TellMe Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#0C0E12;font-family:'DM Sans',system-ui,sans-serif;color:#E8ECF1;}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:#0C0E12;}
+  ::-webkit-scrollbar-thumb{background:#232833;border-radius:3px;}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+const FONT = `'DM Sans', system-ui, sans-serif`;
+const MONO = `'JetBrains Mono', monospace`;
+
+const C = {
+  bg:'#0C0E12', surface:'#14171E', surfaceHover:'#1A1E27',
+  border:'#232833', borderLight:'#2E3440',
+  text:'#E8ECF1', textMuted:'#8B95A5', textDim:'#5C6575',
+  accent:'#22C55E', accentDim:'#166534', accentBg:'rgba(34,197,94,0.08)',
+  warn:'#F59E0B', warnBg:'rgba(245,158,11,0.08)',
+  danger:'#EF4444', dangerBg:'rgba(239,68,68,0.08)',
+  blue:'#3B82F6', blueBg:'rgba(59,130,246,0.08)',
+};
+
+const fmt = n => '₦' + Number(n).toLocaleString('en-NG');
+const fmtDate = d => {
+  if(!d) return '—';
+  const date = typeof d === 'number' ? new Date(d) : new Date(d);
+  return date.toLocaleDateString('en-NG', {year:'numeric',month:'short',day:'numeric'});
+};
+const timeAgo = d => {
+  const s = Math.floor((Date.now() - (typeof d === 'number' ? d : new Date(d).getTime())) / 1000);
+  if(s < 60) return 'just now';
+  if(s < 3600) return `${Math.floor(s/60)}m ago`;
+  if(s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+};
+
+const baseBtn = {fontFamily:FONT,fontSize:13,fontWeight:600,border:'none',borderRadius:6,cursor:'pointer',padding:'8px 16px',transition:'all 0.15s ease',letterSpacing:'0.01em'};
+
+function Badge({children, color, bg}){
+  return <span style={{display:'inline-block',fontSize:11,fontWeight:700,color,background:bg,padding:'3px 10px',borderRadius:99,letterSpacing:'0.02em',whiteSpace:'nowrap'}}>{children}</span>;
+}
+
+function StatCard({label, value, sub, color}){
+  return (
+    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:'20px 22px',flex:'1 1 180px',minWidth:160}}>
+      <div style={{fontSize:11,fontWeight:600,color:C.textMuted,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>{label}</div>
+      <div style={{fontSize:26,fontWeight:800,color:color||C.text,fontFamily:MONO,letterSpacing:'-0.02em'}}>{value}</div>
+      {sub && <div style={{fontSize:11,color:C.textDim,marginTop:4}}>{sub}</div>}
+    </div>
+  );
+}
+
+function SectionHeader({title, sub}){
+  return (
+    <div style={{marginBottom:20}}>
+      <h2 style={{color:C.text,fontSize:18,fontWeight:700,margin:0,letterSpacing:'-0.01em'}}>{title}</h2>
+      {sub && <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>{sub}</p>}
+    </div>
+  );
+}
+
+function Tab({label, active, onClick}){
+  return <button onClick={onClick} style={{...baseBtn,background:active?C.accent:'transparent',color:active?'#000':C.textMuted,borderRadius:99,padding:'7px 18px',fontSize:12}}>{label}</button>;
+}
+
+function Table({columns, data, onRowClick, expandedRow, renderExpanded}){
+  return (
+    <div style={{overflowX:'auto'}}>
+      <table style={{width:'100%',borderCollapse:'collapse',fontFamily:FONT,fontSize:13}}>
+        <thead>
+          <tr>
+            {columns.map((col,i)=>(
+              <th key={i} style={{textAlign:col.align||'left',padding:'10px 14px',color:C.textMuted,fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',borderBottom:`1px solid ${C.border}`,whiteSpace:'nowrap'}}>{col.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.length === 0 && (
+            <tr><td colSpan={columns.length} style={{padding:'24px 14px',color:C.textDim,fontSize:13,textAlign:'center'}}>No data</td></tr>
+          )}
+          {data.map((row, ri)=>(
+            <React.Fragment key={ri}>
+              <tr onClick={()=>onRowClick?.(ri)} style={{cursor:onRowClick?'pointer':'default',background:expandedRow===ri?C.surfaceHover:'transparent',transition:'background 0.1s'}}
+                onMouseEnter={e=>{if(onRowClick)e.currentTarget.style.background=C.surfaceHover;}}
+                onMouseLeave={e=>{if(onRowClick&&expandedRow!==ri)e.currentTarget.style.background='transparent';}}>
+                {columns.map((col,ci)=>(
+                  <td key={ci} style={{padding:'12px 14px',color:C.text,borderBottom:`1px solid ${C.border}`,textAlign:col.align||'left',fontFamily:col.mono?MONO:FONT,fontWeight:col.bold?600:400,whiteSpace:'nowrap'}}>
+                    {col.render?col.render(row):row[col.key]}
+                  </td>
+                ))}
+              </tr>
+              {expandedRow===ri && renderExpanded && (
+                <tr key={`exp-${ri}`}>
+                  <td colSpan={columns.length} style={{padding:0,borderBottom:`1px solid ${C.border}`}}>{renderExpanded(row)}</td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PasswordGate({onAuth}){
+  const [secret, setSecret] = useState('');
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  const submit = async () => {
+    if(!secret.trim()){setError(true);return;}
+    try {
+      const r = await fetch('/api/admin/stats', {headers:{'x-admin-secret':secret}});
+      if(r.status === 401){setError(true);setShake(true);setTimeout(()=>setShake(false),500);return;}
+      onAuth(secret);
+    } catch(e){setError(true);}
+  };
+
+  return (
+    <div style={{minHeight:'100vh',background:C.bg,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FONT}}>
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'48px 40px',width:380,textAlign:'center',animation:shake?'shake 0.5s ease':undefined}}>
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.12em',color:C.accent,textTransform:'uppercase',marginBottom:8}}>Admin Access</div>
+        <h1 style={{color:C.text,fontSize:22,fontWeight:700,margin:'0 0 8px'}}>TellMe Admin</h1>
+        <p style={{color:C.textMuted,fontSize:13,margin:'0 0 28px',lineHeight:1.5}}>Enter your ADMIN_SECRET to continue.</p>
+        <input type="password" value={secret} onChange={e=>{setSecret(e.target.value);setError(false);}} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="Paste secret..."
+          style={{width:'100%',padding:'12px 14px',background:C.bg,border:`1px solid ${error?C.danger:C.border}`,borderRadius:8,color:C.text,fontFamily:MONO,fontSize:14,outline:'none',marginBottom:16,transition:'border-color 0.15s'}}/>
+        {error && <p style={{color:C.danger,fontSize:12,margin:'-8px 0 12px'}}>Invalid secret. Try again.</p>}
+        <button onClick={submit} style={{...baseBtn,width:'100%',padding:'12px',background:C.accent,color:'#000',fontSize:14}}>Authenticate →</button>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard(){
+  const [authed, setAuthed] = useState(false);
+  const [adminSecret, setAdminSecret] = useState('');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [search, setSearch] = useState('');
+  const [expandedCreator, setExpandedCreator] = useState(null);
+  const [expandedPayout, setExpandedPayout] = useState(null);
+  const [confirmPay, setConfirmPay] = useState(false);
+  const [confirmSecret, setConfirmSecret] = useState('');
+  const [confirmError, setConfirmError] = useState(false);
+  const [paySuccess, setPaySuccess] = useState('');
+  const [paying, setPaying] = useState(false);
+
+  useEffect(()=>{
+    try{
+      const s = sessionStorage.getItem('__tm_admin');
+      if(s){setAuthed(true);setAdminSecret(s);}
+    }catch{}
+  },[]);
+
+  useEffect(()=>{
+    if(authed && adminSecret) loadData();
+  },[authed,adminSecret]);
+
+  const loadData = async () => {
+    setLoading(true);setError(null);
+    try{
+      const r = await fetch('/api/admin/stats',{headers:{'x-admin-secret':adminSecret}});
+      if(!r.ok){const d=await r.json();throw new Error(d.error||'Failed');}
+      const d = await r.json();
+      setData(d);
+    }catch(e){setError(e.message);}
+    finally{setLoading(false);}
+  };
+
+  const handleAuth = secret => {
+    setAuthed(true);setAdminSecret(secret);
+    try{sessionStorage.setItem('__tm_admin',secret);}catch{}
+  };
+
+  const logout = () => {
+    setAuthed(false);setAdminSecret('');setData(null);
+    try{sessionStorage.removeItem('__tm_admin');}catch{}
+  };
+
+  const downloadCSV = () => {
+    if(!data) return;
+    const ready = data.payoutPeriod.creators.filter(r=>r.status==='Ready');
+    const rows = ready.map(r=>[`"${r.accountName||''}"`,r.accountNumber||'','OPay','999992',r.net].join(','));
+    const csv = 'Account Name,Account Number,Bank Name,Bank Code,Amount\n'+rows.join('\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url;a.download=`tellme-payout-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleMarkPaid = async () => {
+    if(confirmSecret !== adminSecret){setConfirmError(true);return;}
+    if(!data) return;
+    setPaying(true);
+    const ready = data.payoutPeriod.creators.filter(r=>r.status==='Ready');
+    try{
+      const r = await fetch('/api/admin/mark-paid',{
+        method:'POST',
+        headers:{'x-admin-secret':adminSecret,'content-type':'application/json'},
+        body:JSON.stringify({handles:ready.map(r=>r.handle),periodStart:data.payoutPeriod.start,periodEnd:data.payoutPeriod.end}),
+      });
+      const d = await r.json();
+      if(!d.success) throw new Error(d.error||'Failed');
+      setConfirmPay(false);setConfirmSecret('');setConfirmError(false);
+      setPaySuccess(`Batch ${d.batchRef} — ${d.creatorsCount} creators — ${fmt(d.totalNet)} transferred`);
+      setTimeout(()=>setPaySuccess(''),6000);
+      await loadData();
+    }catch(e){alert('Error: '+e.message);}
+    finally{setPaying(false);}
+  };
+
+  if(!authed) return <PasswordGate onAuth={handleAuth}/>;
+
+  const statusBadge = s => {
+    if(s==='Ready') return <Badge color={C.accent} bg={C.accentBg}>Ready</Badge>;
+    if(s==='Below min') return <Badge color={C.warn} bg={C.warnBg}>Below min</Badge>;
+    return <Badge color={C.danger} bg={C.dangerBg}>No account</Badge>;
+  };
+
+  const readyRows = data?.payoutPeriod?.creators?.filter(r=>r.status==='Ready')||[];
+  const filteredCreators = (data?.creators||[]).filter(c=>c.handle.includes(search.toLowerCase())||((c.accountName||'').toLowerCase().includes(search.toLowerCase())));
+
+  return (
+    <div style={{minHeight:'100vh',background:C.bg,fontFamily:FONT,color:C.text}}>
+      {/* Header */}
+      <div style={{borderBottom:`1px solid ${C.border}`,padding:'16px 28px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:C.bg,zIndex:100}}>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${C.accent},#10B981)`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:14,color:'#000'}}>₦</div>
+          <div>
+            <div style={{fontWeight:700,fontSize:15,letterSpacing:'-0.01em'}}>TellMe Admin</div>
+            <div style={{fontSize:11,color:C.textDim}}>tellme.adparlay.com/admin</div>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <button onClick={loadData} disabled={loading} style={{...baseBtn,background:C.surface,color:C.textMuted,border:`1px solid ${C.border}`,opacity:loading?0.5:1}}>
+            {loading?'Loading...':'↻ Refresh'}
+          </button>
+          <button onClick={logout} style={{...baseBtn,background:'transparent',color:C.danger,border:`1px solid ${C.danger}22`}}>Log out</button>
+        </div>
+      </div>
+
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 28px 60px'}}>
+        {error && <div style={{background:C.dangerBg,border:`1px solid ${C.danger}44`,borderRadius:8,padding:'12px 18px',marginBottom:20,color:C.danger,fontSize:13}}>{error}</div>}
+        {paySuccess && <div style={{background:C.accentBg,border:`1px solid ${C.accentDim}`,borderRadius:8,padding:'12px 18px',marginBottom:20,color:C.accent,fontSize:13,fontWeight:600}}>✓ {paySuccess}</div>}
+
+        {loading && !data && (
+          <div style={{textAlign:'center',padding:'80px 0',color:C.textMuted,fontSize:14}}>Loading data...</div>
+        )}
+
+        {data && (
+          <>
+            {/* Tabs */}
+            <div style={{display:'flex',gap:4,marginBottom:28,flexWrap:'wrap'}}>
+              {['Overview & Payout','All Creators','Payout History','Activity Feed'].map((t,i)=>(
+                <Tab key={i} label={t} active={activeTab===i} onClick={()=>setActiveTab(i)}/>
+              ))}
+            </div>
+
+            {/* Tab 0: Overview + Payout */}
+            {activeTab===0 && (
+              <>
+                <SectionHeader title="Platform Overview"/>
+                <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:36}}>
+                  <StatCard label="Total Users" value={data.overview.totalUsers}/>
+                  <StatCard label="Total Messages" value={data.overview.totalMessages}/>
+                  <StatCard label="Paid Messages" value={data.overview.paidMessages}/>
+                  <StatCard label="Gross Revenue" value={fmt(data.overview.totalRevenue)} color={C.accent}/>
+                  <StatCard label="Platform Fee (10%)" value={fmt(data.overview.platformFee)} color={C.blue}/>
+                  <StatCard label="Total Paid Out" value={fmt(data.overview.totalPaidOut)}/>
+                  <StatCard label="Pending Pool" value={fmt(data.overview.pendingPool)} color={C.warn} sub="Unpaid × 0.9"/>
+                </div>
+
+                <SectionHeader title="This Payout Period" sub={`${fmtDate(data.payoutPeriod.start)} → ${fmtDate(data.payoutPeriod.end)}`}/>
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden',marginBottom:16}}>
+                  <Table
+                    columns={[
+                      {label:'Handle',render:r=><span style={{fontWeight:600}}>@{r.handle}</span>},
+                      {label:'Account Name',render:r=>r.accountName||'—'},
+                      {label:'Account #',render:r=>r.accountNumber?r.accountNumber.replace(/(\d{3})\d{4}(\d{3})/,'$1****$2'):'—',mono:true},
+                      {label:'Gross',render:r=>fmt(r.gross),align:'right',mono:true},
+                      {label:'Fee',render:r=>fmt(r.fee),align:'right',mono:true},
+                      {label:'Net',render:r=><span style={{fontWeight:700,color:C.accent}}>{fmt(r.net)}</span>,align:'right'},
+                      {label:'Status',render:r=>statusBadge(r.status),align:'center'},
+                    ]}
+                    data={data.payoutPeriod.creators}
+                  />
+                </div>
+                <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                  <button onClick={downloadCSV} disabled={readyRows.length===0} style={{...baseBtn,background:readyRows.length?C.blue:C.border,color:readyRows.length?'#fff':C.textDim,opacity:readyRows.length?1:0.5}}>
+                    ↓ Download CSV ({readyRows.length} ready)
+                  </button>
+                  <button onClick={()=>{setConfirmPay(true);setConfirmSecret('');setConfirmError(false);}} disabled={readyRows.length===0} style={{...baseBtn,background:readyRows.length?C.accent:C.border,color:readyRows.length?'#000':C.textDim,opacity:readyRows.length?1:0.5}}>
+                    Mark as Paid
+                  </button>
+                </div>
+
+                {confirmPay && (
+                  <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999}} onClick={()=>setConfirmPay(false)}>
+                    <div onClick={e=>e.stopPropagation()} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'32px 28px',width:420,textAlign:'center'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:C.warn,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:8}}>Confirm Payout</div>
+                      <p style={{color:C.text,fontSize:14,fontWeight:600,margin:'0 0 4px'}}>Mark {readyRows.length} creator{readyRows.length!==1?'s':''} as paid</p>
+                      <p style={{color:C.textMuted,fontSize:13,margin:'0 0 20px'}}>Total: {fmt(readyRows.reduce((s,r)=>s+r.net,0))}. Re-enter admin secret to confirm.</p>
+                      <input type="password" value={confirmSecret} onChange={e=>{setConfirmSecret(e.target.value);setConfirmError(false);}} onKeyDown={e=>e.key==='Enter'&&handleMarkPaid()} placeholder="Admin secret..."
+                        style={{width:'100%',padding:'10px 14px',background:C.bg,border:`1px solid ${confirmError?C.danger:C.border}`,borderRadius:8,color:C.text,fontFamily:MONO,fontSize:13,outline:'none',marginBottom:14}}/>
+                      {confirmError && <p style={{color:C.danger,fontSize:12,margin:'-8px 0 10px'}}>Secret doesn't match.</p>}
+                      <div style={{display:'flex',gap:10}}>
+                        <button onClick={()=>setConfirmPay(false)} style={{...baseBtn,flex:1,background:C.bg,color:C.textMuted,border:`1px solid ${C.border}`}}>Cancel</button>
+                        <button onClick={handleMarkPaid} disabled={paying} style={{...baseBtn,flex:1,background:C.accent,color:'#000',opacity:paying?0.6:1}}>
+                          {paying?'Processing...':'Confirm Payout'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Tab 1: All Creators */}
+            {activeTab===1 && (
+              <>
+                <SectionHeader title="All Creators" sub={`${data.creators.length} creators registered`}/>
+                <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by handle or name..."
+                  style={{width:'100%',maxWidth:360,padding:'10px 14px',background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,fontFamily:FONT,fontSize:13,outline:'none',marginBottom:16}}/>
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden'}}>
+                  <Table
+                    columns={[
+                      {label:'Handle',render:r=><span style={{fontWeight:600}}>@{r.handle}</span>},
+                      {label:'Joined',render:r=>fmtDate(r.joined)},
+                      {label:'Messages',key:'totalMessages',align:'right',mono:true},
+                      {label:'Paid',key:'paidCount',align:'right',mono:true},
+                      {label:'All-time Earned',render:r=>fmt(r.allTimeEarned),align:'right',mono:true},
+                      {label:'Unpaid Balance',render:r=><span style={{color:r.unpaidBalance>0?C.warn:C.textDim}}>{fmt(r.unpaidBalance)}</span>,align:'right'},
+                      {label:'Payout Acct',render:r=>r.hasPayout?<Badge color={C.accent} bg={C.accentBg}>Set</Badge>:<Badge color={C.danger} bg={C.dangerBg}>Not set</Badge>,align:'center'},
+                    ]}
+                    data={filteredCreators}
+                    onRowClick={i=>setExpandedCreator(expandedCreator===i?null:i)}
+                    expandedRow={expandedCreator}
+                    renderExpanded={row=>(
+                      <div style={{padding:'16px 20px',background:C.bg}}>
+                        <div style={{fontSize:12,fontWeight:700,color:C.textMuted,marginBottom:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Paid messages from @{row.handle}</div>
+                        {row.paidMsgs.length===0
+                          ? <div style={{color:C.textDim,fontSize:13,padding:'8px 0'}}>No paid messages yet.</div>
+                          : <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                              {[...row.paidMsgs].sort((a,b)=>b.date-a.date).map(m=>(
+                                <div key={m.id} style={{display:'flex',alignItems:'center',gap:14,padding:'8px 12px',background:C.surface,borderRadius:6,fontSize:13}}>
+                                  <span style={{fontFamily:MONO,fontWeight:700,color:C.accent,minWidth:70}}>{fmt(m.amount)}</span>
+                                  <span style={{color:C.text,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>"{m.text}"</span>
+                                  <span style={{color:C.textDim,fontSize:11,whiteSpace:'nowrap'}}>{fmtDate(m.date)}</span>
+                                  {m.paidOutAt && <Badge color={C.accent} bg={C.accentBg}>Paid</Badge>}
+                                </div>
+                              ))}
+                            </div>
+                        }
+                      </div>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Tab 2: Payout History */}
+            {activeTab===2 && (
+              <>
+                <SectionHeader title="Payout History" sub={`${data.payouts.length} batch${data.payouts.length!==1?'es':''} processed`}/>
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden'}}>
+                  <Table
+                    columns={[
+                      {label:'Date',render:r=>fmtDate(r.date),bold:true},
+                      {label:'Creators Paid',render:r=>`${r.items.length} creator${r.items.length!==1?'s':''}`},
+                      {label:'Total Transferred',render:r=><span style={{fontWeight:700,color:C.accent}}>{fmt(r.items.reduce((s,i)=>s+i.amount,0))}</span>,align:'right'},
+                      {label:'Reference',render:r=><span style={{fontFamily:MONO,fontSize:12,color:C.textMuted}}>{r.reference}</span>},
+                    ]}
+                    data={data.payouts}
+                    onRowClick={i=>setExpandedPayout(expandedPayout===i?null:i)}
+                    expandedRow={expandedPayout}
+                    renderExpanded={row=>(
+                      <div style={{padding:'16px 20px',background:C.bg}}>
+                        <div style={{fontSize:12,fontWeight:700,color:C.textMuted,marginBottom:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>Individual Payouts</div>
+                        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                          {row.items.map((item,j)=>(
+                            <div key={j} style={{display:'flex',alignItems:'center',gap:14,padding:'8px 12px',background:C.surface,borderRadius:6,fontSize:13}}>
+                              <span style={{fontWeight:600,minWidth:80}}>@{item.handle}</span>
+                              <span style={{fontFamily:MONO,fontWeight:700,color:C.accent}}>{fmt(item.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Tab 3: Activity Feed */}
+            {activeTab===3 && (
+              <>
+                <SectionHeader title="Recent Activity" sub="Last 50 paid messages across all creators"/>
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden'}}>
+                  {data.recentActivity.length===0
+                    ? <div style={{padding:'32px',textAlign:'center',color:C.textDim,fontSize:13}}>No paid messages yet.</div>
+                    : data.recentActivity.map((m,i)=>(
+                        <div key={m.id} style={{display:'flex',alignItems:'center',gap:14,padding:'12px 18px',borderBottom:i<data.recentActivity.length-1?`1px solid ${C.border}`:'none'}}
+                          onMouseEnter={e=>e.currentTarget.style.background=C.surfaceHover}
+                          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <span style={{color:C.textDim,fontSize:11,minWidth:60,whiteSpace:'nowrap'}}>{timeAgo(m.date)}</span>
+                          <span style={{fontWeight:600,minWidth:80,fontSize:13}}>@{m.handle}</span>
+                          <span style={{fontFamily:MONO,fontWeight:700,color:C.accent,minWidth:70,fontSize:13}}>{fmt(m.amount)}</span>
+                          <span style={{color:C.textMuted,fontSize:13,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>"{m.text}"</span>
+                        </div>
+                      ))
+                  }
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<AdminDashboard/>);
+</script>
+</body>
+</html>
