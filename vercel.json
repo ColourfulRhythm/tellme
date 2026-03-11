@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/", "destination": "/admin.html" },
     { "source": "/(.*)", "destination": "/admin.html" }
