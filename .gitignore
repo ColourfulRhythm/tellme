@@ -33,3 +33,4 @@ node_modules/
 # Build artifacts (if any)
 dist/
 build/
+admin.html
