@@ -126,7 +126,7 @@ function PasswordGate({onAuth}){
   const submit = async () => {
     if(!secret.trim()){setError(true);return;}
     try {
-      const r = await fetch((location.hostname==='localhost'||location.hostname==='127.0.0.1'?'https://tellme.adparlay.com':'')+'/api/admin/stats', {headers:{'x-admin-secret':secret}});
+      const r = await fetch('https://tellme.adparlay.com/api/admin/stats', {headers:{'x-admin-secret':secret}});
       if(r.status === 401){setError(true);setShake(true);setTimeout(()=>setShake(false),500);return;}
       onAuth(secret);
     } catch(e){setError(true);}
@@ -177,7 +177,7 @@ function AdminDashboard(){
   const loadData = async () => {
     setLoading(true);setError(null);
     try{
-      const API = (location.hostname==='localhost'||location.hostname==='127.0.0.1'?'https://tellme.adparlay.com':'');
+      const API = 'https://tellme.adparlay.com';
       const r = await fetch(API+'/api/admin/stats',{headers:{'x-admin-secret':adminSecret}});
       if(!r.ok){const d=await r.json();throw new Error(d.error||'Failed');}
       const d = await r.json();
