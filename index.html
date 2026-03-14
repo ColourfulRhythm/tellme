@@ -33,6 +33,8 @@
   /* Prevent flash of home page when loading with hash */
   body:not(.loaded) .view.active{animation:none;}
   @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  #termsModal.open{display:flex!important;}
 
   /* HOME */
   .hero{max-width:580px;margin:0 auto;padding:88px 24px 56px;text-align:center;}
@@ -277,6 +279,33 @@
       <div class="divider">new here?</div>
       <button class="btn ghost" onclick="goHome()">Create a link</button>
     </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align:center;padding:32px 24px 40px;"><button onclick="openTerms()" style="background:none;border:none;color:var(--muted);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;text-decoration:underline;text-underline-offset:3px;opacity:.7;">Terms &amp; Conditions</button></div>
+
+<!-- TERMS MODAL -->
+<div id="termsModal" onclick="if(event.target===this)closeTerms()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:9999;align-items:flex-end;justify-content:center;padding:0;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:24px 24px 0 0;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;padding:28px 24px 40px;animation:slideUp .25s ease;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:17px;">Terms &amp; Conditions</span>
+      <button onclick="closeTerms()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;color:var(--muted);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
+    </div>
+    <div style="font-size:13px;line-height:1.75;color:var(--muted);display:flex;flex-direction:column;gap:18px;">
+      <p style="font-size:11px;color:var(--muted);opacity:.6;">Last updated: February 2026</p>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">1. Acceptance</strong>By accessing or using TellMe, you agree to be bound by these Terms. If you disagree, do not use the platform.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">2. Anonymity Disclaimer</strong>Messages sent on TellMe are anonymous to the recipient. However, IP addresses and device data may be logged for abuse prevention. We do not guarantee complete anonymity.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">3. User Conduct</strong>You must not send harassment, threats, hate speech, sexual content involving minors, or any content that violates Nigerian law or international standards. We reserve the right to remove content and suspend accounts without notice.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">4. Paid Messages</strong>Payments are processed securely by Paystack. All transactions are final — no refunds once a message has been sent. TellMe charges a 10% platform fee on all paid messages.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">5. Creator Payouts</strong>Payouts are processed on the 22nd of every month. The minimum payout threshold is ₦5,000. You must provide accurate bank account details. Providing false or mismatched account information forfeits your pending balance.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">6. Content</strong>You retain ownership of content you submit. By submitting, you grant TellMe a non-exclusive licence to display that content on the platform.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">7. Availability</strong>TellMe is provided as-is. We make no guarantees of uptime or data preservation. We may suspend or terminate accounts at our sole discretion.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">8. Age Requirement</strong>You must be at least 13 years old to use TellMe.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">9. Governing Law</strong>These Terms are governed by the laws of the Federal Republic of Nigeria. Any disputes shall be resolved under Nigerian jurisdiction.</div>
+      <div><strong style="color:var(--text);display:block;margin-bottom:4px;">10. Changes</strong>We may update these Terms at any time. Continued use of the platform constitutes acceptance of the revised Terms.</div>
+    </div>
+    <button onclick="closeTerms()" style="margin-top:28px;width:100%;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;">Close</button>
   </div>
 </div>
 
@@ -1488,6 +1517,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   wirePins(); 
   route(); 
 });
+
+function openTerms(){document.getElementById('termsModal').classList.add('open');}
+function closeTerms(){document.getElementById('termsModal').classList.remove('open');}
 </script>
 </div>
 </body>
