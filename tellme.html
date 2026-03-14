@@ -151,7 +151,7 @@
   /* BENTO MODAL */
   .overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:24px;}
   .overlay.show{display:flex;animation:fi .2s ease;}
-  .mbox{background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:30px;max-width:440px;width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;}
+  .mbox{background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:30px;max-width:460px;width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;overflow:visible;}
   .mbox h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
 
   .bento{width:360px;border-radius:28px;padding:34px 30px 24px;position:relative;overflow:hidden;font-family:'DM Sans',sans-serif;flex-shrink:0;box-shadow:0 8px 40px var(--bshadow,rgba(0,0,0,.1)),0 1.5px 4px var(--bshadow2,rgba(0,0,0,.06));border:1px solid var(--bborder,rgba(255,255,255,.18));}
@@ -185,8 +185,8 @@
   .bento[data-t="tetradic"]{background:linear-gradient(135deg,#6b21a8 0%,#7c3aed 25%,#0d9488 75%,#0f766e 100%);--bt:#ffffff;--bqm-c:rgba(255,255,255,.4);--blab-bg:rgba(255,255,255,.15);--blab-c:#ffffff;--bdiv:rgba(255,255,255,.2);--bbr:rgba(255,255,255,.6);--blogo-bg:rgba(255,255,255,.2);--blogo-c:#ffffff;--g1:rgba(245,158,11,.15);--g2:rgba(225,29,72,.15);--bborder:rgba(255,255,255,.2);--bglass:rgba(255,255,255,.08);box-shadow:0 12px 48px rgba(107,33,168,.35);}
   .bento[data-t="tetradic"] .bq{font-weight:500;}
 
-  .tpicker{display:flex;gap:10px;justify-content:center;}
-  .tsw{width:34px;height:34px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .2s;}
+  .tpicker{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:100%;}
+  .tsw{width:32px;height:32px;flex-shrink:0;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .2s;}
   .tsw:hover,.tsw.active{border-color:var(--accent);transform:scale(1.12);}
 
   .mact{display:flex;gap:10px;width:100%;}
@@ -403,7 +403,7 @@
   <div class="mbox">
     <h3>Download Bento Card</h3>
     <div id="bPrev"></div>
-    <div>
+    <div style="width:100%;overflow:visible;">
       <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:700">Style</p>
       <div class="tpicker">
         <div class="tsw active" style="background:#f5f0e8" data-t="warm" onclick="setTheme('warm',this)"></div>
