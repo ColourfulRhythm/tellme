@@ -157,7 +157,7 @@
   /* BENTO MODAL */
   .overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:24px;}
   .overlay.show{display:flex;animation:fi .2s ease;}
-  .mbox{background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:30px;max-width:440px;width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;}
+  .mbox{background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:30px;max-width:460px;width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;overflow:visible;}
   .mbox h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
 
   .bento{width:360px;border-radius:28px;padding:34px 30px 24px;position:relative;overflow:hidden;font-family:'DM Sans',sans-serif;flex-shrink:0;box-shadow:0 8px 40px var(--bshadow,rgba(0,0,0,.1)),0 1.5px 4px var(--bshadow2,rgba(0,0,0,.06));border:1px solid var(--bborder,rgba(255,255,255,.18));}
@@ -182,8 +182,17 @@
   .bento[data-t="pink"]{background:linear-gradient(145deg,#ffeaf3,#fdd6eb,#f5d0ff);--bt:#2d1832;--bqm-c:rgba(255,100,170,.06);--blab-bg:rgba(45,24,50,.05);--blab-c:rgba(45,24,50,.45);--bdiv:rgba(45,24,50,.08);--bbr:rgba(45,24,50,.3);--blogo-bg:rgba(45,24,50,.06);--blogo-c:#c93f8b;--g1:rgba(255,144,194,.25);--g2:rgba(201,122,255,.18);--bborder:rgba(255,255,255,.55);--bglass:rgba(255,255,255,.35);--bshadow:rgba(180,80,140,.1);--bshadow2:rgba(180,80,140,.05);--baccent:#c97aff;}
   .bento[data-t="lime"]{background:linear-gradient(155deg,#eef8d5,#dff2c0);--bt:#1a2e0a;--bqm-c:rgba(60,138,26,.06);--blab-bg:rgba(26,46,10,.05);--blab-c:rgba(26,46,10,.45);--bdiv:rgba(26,46,10,.08);--bbr:rgba(26,46,10,.3);--blogo-bg:rgba(26,46,10,.06);--blogo-c:#2d7a0e;--g1:rgba(124,200,50,.22);--g2:rgba(50,200,100,.12);--bborder:rgba(255,255,255,.5);--bglass:rgba(255,255,255,.3);--bshadow:rgba(26,46,10,.08);--bshadow2:rgba(26,46,10,.04);--baccent:#50c878;}
 
-  .tpicker{display:flex;gap:10px;justify-content:center;}
-  .tsw{width:34px;height:34px;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .2s;}
+  /* Monochromatic (white) — flat, no shadow, bold serif quote */
+  .bento[data-t="white"]{background:linear-gradient(165deg,#ffffff 0%,#fafafa 50%,#f5f5f5 100%);--bt:#1a1a1a;--bqm-c:#d0d0d0;--blab-bg:#f0f0f0;--blab-c:#1a1a1a;--bdiv:#e0e0e0;--bbr:#888888;--blogo-bg:#e8e8e8;--blogo-c:#1a1a1a;--g1:transparent;--g2:transparent;--bborder:rgba(0,0,0,.06);--bglass:transparent;box-shadow:none;border:1px solid rgba(0,0,0,.06);}
+  .bento[data-t="white"] .bq{font-weight:700;}
+  .bento[data-t="white"]::before,.bento[data-t="white"]::after{display:none;}
+
+  /* Tetradic — violet→teal gradient, amber/coral accents */
+  .bento[data-t="tetradic"]{background:linear-gradient(135deg,#6b21a8 0%,#7c3aed 25%,#0d9488 75%,#0f766e 100%);--bt:#ffffff;--bqm-c:rgba(255,255,255,.4);--blab-bg:rgba(255,255,255,.15);--blab-c:#ffffff;--bdiv:rgba(255,255,255,.2);--bbr:rgba(255,255,255,.6);--blogo-bg:rgba(255,255,255,.2);--blogo-c:#ffffff;--g1:rgba(245,158,11,.15);--g2:rgba(225,29,72,.15);--bborder:rgba(255,255,255,.2);--bglass:rgba(255,255,255,.08);box-shadow:0 12px 48px rgba(107,33,168,.35);}
+  .bento[data-t="tetradic"] .bq{font-weight:500;}
+
+  .tpicker{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:100%;}
+  .tsw{width:32px;height:32px;flex-shrink:0;border-radius:10px;cursor:pointer;border:2px solid transparent;transition:all .2s;}
   .tsw:hover,.tsw.active{border-color:var(--accent);transform:scale(1.12);}
 
   .mact{display:flex;gap:10px;width:100%;}
@@ -419,13 +428,15 @@
   <div class="mbox">
     <h3>Download Bento Card</h3>
     <div id="bPrev"></div>
-    <div>
+    <div style="width:100%;overflow:visible;">
       <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:700">Style</p>
       <div class="tpicker">
         <div class="tsw active" style="background:#f5f0e8" data-t="warm" onclick="setTheme('warm',this)"></div>
         <div class="tsw" style="background:#1a1a2e" data-t="dark" onclick="setTheme('dark',this)"></div>
         <div class="tsw" style="background:linear-gradient(135deg,#ffe4ef,#ffd6e8)" data-t="pink" onclick="setTheme('pink',this)"></div>
         <div class="tsw" style="background:#e8f5c8" data-t="lime" onclick="setTheme('lime',this)"></div>
+        <div class="tsw" style="background:#ffffff;border:1px solid rgba(0,0,0,.15)" data-t="white" onclick="setTheme('white',this)" title="Monochromatic"></div>
+        <div class="tsw" style="background:linear-gradient(135deg,#6b21a8,#0d9488)" data-t="tetradic" onclick="setTheme('tetradic',this)" title="Tetradic"></div>
       </div>
     </div>
     <div class="mact">
@@ -1232,6 +1243,8 @@ const dots={
   dark:['#c8f564','#7c6aff','rgba(255,255,255,.12)'],
   pink:['#ff90c2','#c97aff','rgba(45,24,50,.12)'],
   lime:['#3d8a1a','#50c878','rgba(26,46,10,.12)'],
+  white:['#1a1a1a','#666666','#d0d0d0'],
+  tetradic:['#f59e0b','#0d9488','#e11d48'],
 };
 
 function openBento(id){
