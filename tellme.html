@@ -332,10 +332,11 @@
         <h2 id="dTitle">Inbox</h2>
         <p id="dSub">anonymous questions</p>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <button class="sm" onclick="refreshDash()" id="refreshBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">↻ Refresh</button>
+        <button class="sm" onclick="enableNotifications()" id="notifBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">🔔 Enable alerts</button>
         <button class="sm" onclick="showEarnings()" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--accent);cursor:pointer;transition:all .2s;">💰 Earnings</button>
-      <button class="lout" onclick="logout()">Log out</button>
+        <button class="lout" onclick="logout()">Log out</button>
       </div>
     </div>
 
@@ -407,16 +408,25 @@
       <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:700">Style</p>
       <div class="tpicker">
         <div class="tsw active" style="background:#f5f0e8" data-t="warm" onclick="setTheme('warm',this)"></div>
+        <div class="tsw" style="background:#ffffff;border:1px solid rgba(0,0,0,.15)" data-t="white" onclick="setTheme('white',this)" title="Monochromatic"></div>
         <div class="tsw" style="background:#1a1a2e" data-t="dark" onclick="setTheme('dark',this)"></div>
         <div class="tsw" style="background:linear-gradient(135deg,#ffe4ef,#ffd6e8)" data-t="pink" onclick="setTheme('pink',this)"></div>
         <div class="tsw" style="background:#e8f5c8" data-t="lime" onclick="setTheme('lime',this)"></div>
-        <div class="tsw" style="background:#ffffff;border:1px solid rgba(0,0,0,.15)" data-t="white" onclick="setTheme('white',this)" title="Monochromatic"></div>
         <div class="tsw" style="background:linear-gradient(135deg,#6b21a8,#0d9488)" data-t="tetradic" onclick="setTheme('tetradic',this)" title="Tetradic"></div>
       </div>
     </div>
     <div class="mact">
       <button class="bcx" onclick="closeModal()">Cancel</button>
       <button class="bdl" onclick="downloadCard()">↓ Download JPG</button>
+    </div>
+    <div style="width:100%;margin-top:8px;text-align:center;font-size:11px;color:var(--muted);">
+      or share card to:
+      <div style="display:flex;justify-content:center;gap:6px;margin-top:4px;font-size:11px;">
+        <button type="button" onclick="shareBento('instagram')" style="border-radius:999px;border:1px solid rgba(225,29,72,.4);background:transparent;color:inherit;padding:3px 8px;cursor:pointer;">📸 IG</button>
+        <button type="button" onclick="shareBento('snapchat')" style="border-radius:999px;border:1px solid rgba(250,204,21,.4);background:transparent;color:inherit;padding:3px 8px;cursor:pointer;">👻 SC</button>
+        <button type="button" onclick="shareBento('x')" style="border-radius:999px;border:1px solid rgba(148,163,184,.5);background:transparent;color:inherit;padding:3px 8px;cursor:pointer;">𝕏</button>
+        <button type="button" onclick="shareBento('twitch')" style="border-radius:999px;border:1px solid rgba(59,130,246,.45);background:transparent;color:inherit;padding:3px 8px;cursor:pointer;">🎮 Tw</button>
+      </div>
     </div>
   </div>
 </div>
@@ -722,12 +732,12 @@ let lastDashTotal = null;
 function startDashAutoRefresh(){
   // Clear any existing interval
   if(dashRefreshInterval) clearInterval(dashRefreshInterval);
-  // Refresh dashboard every 8 seconds
+  // Refresh dashboard every 4 seconds (faster alerts for streamers)
   dashRefreshInterval = setInterval(async ()=>{
     if(S && document.getElementById('view-dash')?.classList.contains('active')){
       await renderDash();
     }
-  }, 8000);
+  }, 4000);
 }
 
 function stopDashAutoRefresh(){
@@ -1063,6 +1073,27 @@ function resetAsk(){
 function previewAsk(){ if(S) loadAsk(S.handle); }
 
 /* ====== DASHBOARD ====== */
+function enableNotifications(){
+  if(typeof Notification==='undefined'){
+    toast('Notifications not supported in this browser.');
+    return;
+  }
+  const btn=document.getElementById('notifBtn');
+  if(Notification.permission==='granted'){
+    toast('You\'ll get alerts for new questions and gifts.');
+    if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+    return;
+  }
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){
+      toast('You\'ll get alerts for new questions and gifts.');
+      if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+    }else if(p==='denied'){
+      toast('Notifications blocked in your browser settings.');
+    }
+  }).catch(()=>toast('Could not enable notifications.'));
+}
+
 async function renderDash(){
   if(!S)return;
   let acc=null;
@@ -1077,10 +1108,21 @@ async function renderDash(){
   // Alert when new messages arrive (refresh or auto-refresh, not initial load)
   if(lastDashTotal !== null && msgs.length > lastDashTotal){
     const added=msgs.length-lastDashTotal;
-    toast(added===1?'New anonymous question!':'You have '+added+' new anonymous questions!');
+    const newSlice=msgs.slice(0,added);
+    const paid=newSlice.filter(m=>m.isPriority&&m.amountNgn).length;
+    const paidTotal=newSlice.reduce((sum,m)=>sum+(m.isPriority&&m.amountNgn?m.amountNgn:0),0);
+    let msgText='';
+    if(paid>0){
+      msgText=paid===1
+        ?`New gift: ₦${paidTotal.toLocaleString()} + ${added-paid} other question${(added-paid)===1?'':'s'}.`
+        :`You received ₦${paidTotal.toLocaleString()} in ${paid} new gifts.`;
+    }else{
+      msgText=added===1?'New anonymous question!':'You have '+added+' new anonymous questions!';
+    }
+    toast(msgText);
     if(document.hidden&&typeof Notification!=='undefined'){
       if(Notification.permission==='default') Notification.requestPermission();
-      if(Notification.permission==='granted') new Notification('TellMe',{body:added===1?'New anonymous question!':added+' new anonymous questions!'});
+      if(Notification.permission==='granted') new Notification('TellMe',{body:msgText});
     }
   }
   lastDashTotal=msgs.length;
@@ -1284,12 +1326,13 @@ function copyLink(){
 }
 function shareLink(){
   const url=getPublicUrl(S?.handle||'');
-  if(navigator.share) navigator.share({title:'Ask me anonymously 👀',url});
+  if(navigator.share) navigator.share({title:'Ask me anonymously 👀',url}).catch(()=>{});
   else copyLink();
 }
 
 /* ====== BENTO ====== */
 let bId=null, bTheme='warm', bHandle='';
+let bentoShareMode=null; // when set, downloadCard will share instead of just download
 const dots={
   warm:['#1a1a2e','#7c6aff','rgba(26,26,46,.15)'],
   dark:['#c8f564','#7c6aff','rgba(255,255,255,.12)'],
@@ -1411,7 +1454,7 @@ function downloadCard(){
       
       const fileName='tellme-'+bHandle+'-'+Date.now()+'.jpg';
       
-      // For iOS: Use Web Share API with blob to save to Photos
+      // For iOS: Use Web Share API with blob (save to Photos or share)
       if(isIOS && navigator.share){
         // Convert to blob for iOS share
         out.toBlob(function(blob){
@@ -1426,32 +1469,32 @@ function downloadCard(){
           
           const file=new File([blob],fileName,{type:'image/jpeg'});
           
-          // Try Web Share API first (allows saving to Photos)
+          // Try Web Share API first (allows saving to Photos or sharing)
           if(navigator.canShare && navigator.canShare({files:[file]})){
             navigator.share({
               files:[file],
               title:'TellMe Bento Card'
             }).then(()=>{
-              toast('Saved! Check Photos (or Files app) 🎉');
-              closeModal();
-              if(btn){
-                btn.textContent=originalText;
-                btn.disabled=false;
+              if(!bentoShareMode){
+                toast('Saved! Check Photos (or Files app) 🎉');
               }
+              closeModal();
             }).catch(err=>{
               // User cancelled or share failed
               if(err.name!=='AbortError'){
                 console.log('Share failed, using fallback:',err);
-                // Fallback: open data URL in new tab (user can long-press to save)
+                // Fallback: open data URL in new tab (user can long-press to save or share)
                 const dataUrl=out.toDataURL('image/jpeg',.95);
                 const newWindow=window.open();
                 if(newWindow){
                   newWindow.document.write(`<html><body style="margin:0;padding:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${dataUrl}" style="max-width:100%;max-height:100%;" /></body></html>`);
-                  toast('Tap & hold image to save (check Files app if not in Photos)');
+                  toast('Tap & hold image to save or share');
                 }else{
                   downloadAsFile(blob,fileName);
                 }
               }
+            }).finally(()=>{
+              bentoShareMode=null;
               if(btn){
                 btn.textContent=originalText;
                 btn.disabled=false;
@@ -1463,10 +1506,11 @@ function downloadCard(){
             const newWindow=window.open();
             if(newWindow){
               newWindow.document.write(`<html><body style="margin:0;padding:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${dataUrl}" style="max-width:100%;max-height:100%;" /></body></html>`);
-              toast('Tap & hold image to save to Photos');
+              toast('Tap & hold image to save');
             }else{
               downloadAsFile(blob,fileName);
             }
+            bentoShareMode=null;
             if(btn){
               btn.textContent=originalText;
               btn.disabled=false;
@@ -1474,19 +1518,41 @@ function downloadCard(){
           }
         },'image/jpeg',.95);
       }else{
-        // For Android and desktop: Use toDataURL directly (faster)
+        // For Android and desktop
         const dataUrl=out.toDataURL('image/jpeg',.95);
-        const a=document.createElement('a');
-        a.download=fileName;
-        a.href=dataUrl;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        toast('Card downloaded! 🎉');
-        closeModal();
-        if(btn){
-          btn.textContent=originalText;
-          btn.disabled=false;
+
+        // If we're in share mode and Web Share API with files is available
+        if(bentoShareMode && navigator.canShare && navigator.share){
+          fetch(dataUrl)
+            .then(res=>res.blob())
+            .then(blob=>{
+              const file=new File([blob],fileName,{type:'image/jpeg'});
+              if(navigator.canShare({files:[file]})){
+                return navigator.share({files:[file],title:'TellMe Bento Card'});
+              }
+            })
+            .catch(()=>{})
+            .finally(()=>{
+              bentoShareMode=null;
+              if(btn){
+                btn.textContent=originalText;
+                btn.disabled=false;
+              }
+            });
+        }else{
+          // Default: trigger file download
+          const a=document.createElement('a');
+          a.download=fileName;
+          a.href=dataUrl;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          toast('Card downloaded! 🎉');
+          closeModal();
+          if(btn){
+            btn.textContent=originalText;
+            btn.disabled=false;
+          }
         }
       }
       
@@ -1522,6 +1588,12 @@ function downloadCard(){
       btn.disabled=false;
     }
   });
+}
+
+function shareBento(platform){
+  // Platform is currently informational only; image is shared without extra text
+  bentoShareMode = platform || 'generic';
+  downloadCard();
 }
 
 /* ====== UTILS ====== */

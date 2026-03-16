@@ -364,10 +364,11 @@
         <h2 id="dTitle">Inbox</h2>
         <p id="dSub">anonymous questions</p>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <button class="sm" onclick="refreshDash()" id="refreshBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">↻ Refresh</button>
+        <button class="sm" onclick="enableNotifications()" id="notifBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">🔔 Enable alerts</button>
         <button class="sm" onclick="showEarnings()" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--accent);cursor:pointer;transition:all .2s;">💰 Earnings</button>
-      <button class="lout" onclick="logout()">Log out</button>
+        <button class="lout" onclick="logout()">Log out</button>
       </div>
     </div>
 
@@ -432,10 +433,10 @@
       <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:700">Style</p>
       <div class="tpicker">
         <div class="tsw active" style="background:#f5f0e8" data-t="warm" onclick="setTheme('warm',this)"></div>
+        <div class="tsw" style="background:#ffffff;border:1px solid rgba(0,0,0,.15)" data-t="white" onclick="setTheme('white',this)" title="Monochromatic"></div>
         <div class="tsw" style="background:#1a1a2e" data-t="dark" onclick="setTheme('dark',this)"></div>
         <div class="tsw" style="background:linear-gradient(135deg,#ffe4ef,#ffd6e8)" data-t="pink" onclick="setTheme('pink',this)"></div>
         <div class="tsw" style="background:#e8f5c8" data-t="lime" onclick="setTheme('lime',this)"></div>
-        <div class="tsw" style="background:#ffffff;border:1px solid rgba(0,0,0,.15)" data-t="white" onclick="setTheme('white',this)" title="Monochromatic"></div>
         <div class="tsw" style="background:linear-gradient(135deg,#6b21a8,#0d9488)" data-t="tetradic" onclick="setTheme('tetradic',this)" title="Tetradic"></div>
       </div>
     </div>
@@ -707,12 +708,12 @@ let lastDashTotal = null;
 function startDashAutoRefresh(){
   // Clear any existing interval
   if(dashRefreshInterval) clearInterval(dashRefreshInterval);
-  // Refresh dashboard every 8 seconds
+  // Refresh dashboard every 4 seconds (faster alerts for streamers)
   dashRefreshInterval = setInterval(async ()=>{
     if(S && document.getElementById('view-dash')?.classList.contains('active')){
       await renderDash();
     }
-  }, 8000);
+  }, 4000);
 }
 
 function stopDashAutoRefresh(){
@@ -1041,6 +1042,27 @@ function resetAsk(){
 function previewAsk(){ if(S) loadAsk(S.handle); }
 
 /* ====== DASHBOARD ====== */
+function enableNotifications(){
+  if(typeof Notification==='undefined'){
+    toast('Notifications not supported in this browser.');
+    return;
+  }
+  const btn=document.getElementById('notifBtn');
+  if(Notification.permission==='granted'){
+    toast('You\'ll get alerts for new questions and gifts.');
+    if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+    return;
+  }
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){
+      toast('You\'ll get alerts for new questions and gifts.');
+      if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+    }else if(p==='denied'){
+      toast('Notifications blocked in your browser settings.');
+    }
+  }).catch(()=>toast('Could not enable notifications.'));
+}
+
 async function renderDash(fresh){
   if(!S)return;
   let acc=null;
@@ -1055,10 +1077,21 @@ async function renderDash(fresh){
   // Alert when new messages arrive (refresh or auto-refresh, not initial load)
   if(lastDashTotal !== null && msgs.length > lastDashTotal){
     const added=msgs.length-lastDashTotal;
-    toast(added===1?'New anonymous question!':'You have '+added+' new anonymous questions!');
+    const newSlice=msgs.slice(0,added);
+    const paid=newSlice.filter(m=>m.isPriority&&m.amountNgn).length;
+    const paidTotal=newSlice.reduce((sum,m)=>sum+(m.isPriority&&m.amountNgn?m.amountNgn:0),0);
+    let msgText='';
+    if(paid>0){
+      msgText=paid===1
+        ?`New gift: ₦${paidTotal.toLocaleString()} + ${added-paid} other question${(added-paid)===1?'':'s'}.`
+        :`You received ₦${paidTotal.toLocaleString()} in ${paid} new gifts.`;
+    }else{
+      msgText=added===1?'New anonymous question!':'You have '+added+' new anonymous questions!';
+    }
+    toast(msgText);
     if(document.hidden&&typeof Notification!=='undefined'){
       if(Notification.permission==='default') Notification.requestPermission();
-      if(Notification.permission==='granted') new Notification('TellMe',{body:added===1?'New anonymous question!':added+' new anonymous questions!'});
+      if(Notification.permission==='granted') new Notification('TellMe',{body:msgText});
     }
   }
   lastDashTotal=msgs.length;
