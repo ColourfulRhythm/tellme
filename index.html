@@ -1510,16 +1510,13 @@ function downloadCard(){
 /* ====== UTILS ====== */
 function getBaseUrl(){
   if(window.location.origin && window.location.origin !== 'null'){
-    const path = window.location.pathname.replace(/\/[^/]*$/, '');
-    return window.location.origin + (path || '');
+    return window.location.origin;
   }
-  // Fallback for file:// protocol
-  return window.location.href.split('/').slice(0, -1).join('/') || window.location.href;
+  return window.location.href.split('/').slice(0,3).join('/') || window.location.href;
 }
 function getPublicUrl(handle){
-  const base = getBaseUrl();
-  // Remove trailing slash if present, then add hash route
-  return base.replace(/\/$/, '') + '/#/u/' + handle;
+  // Clean URL: tellme.adparlay.com/username
+  return getBaseUrl() + '/' + handle;
 }
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(msg){
@@ -1594,29 +1591,41 @@ function route(){
     handleCallback();
     return;
   }
+  // Clean URL: /username
+  const path=location.pathname.replace(/^\//,'').trim();
+  if(path && path!=='index.html' && path!=='tellme.html' && !path.startsWith('api/')){
+    loadAsk(path);
+    return;
+  }
+  // Backward compat: old hash-based links /#/u/username still work
   const h=location.hash;
   if(h.startsWith('#/u/')){
     const handle=h.slice(4).split('?')[0].trim();
-    if(handle){ 
-      loadAsk(handle); 
-      return; 
+    if(handle){
+      // Redirect to clean URL silently
+      history.replaceState(null,'','/'+handle);
+      loadAsk(handle);
+      return;
     }
   }
   if(h==='#/login'){ showLoginView(); return; }
   if(S) refreshNav();
 }
 
-// Check hash immediately to prevent flash of home page
-(function checkHashImmediately(){
+// Hide home immediately if clean URL or hash route
+(function checkRouteImmediately(){
+  const path=location.pathname.replace(/^\//,'').trim();
   const h=location.hash;
-  if(h.startsWith('#/u/') || h==='#/login'){
-    // Hide home view immediately if we have a hash route
+  const isUserPage=(path && path!=='index.html' && path!=='tellme.html' && !path.startsWith('api/'));
+  const isHashPage=(h.startsWith('#/u/') || h==='#/login');
+  if(isUserPage || isHashPage){
     const homeView=document.getElementById('view-home');
     if(homeView) homeView.classList.remove('active');
   }
 })();
 
 window.addEventListener('hashchange',route);
+window.addEventListener('popstate',route);
 window.addEventListener('DOMContentLoaded',()=>{ 
   initSupabase(); // Try again after DOM loads
   wirePins(); 
