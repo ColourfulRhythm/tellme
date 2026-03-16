@@ -683,8 +683,9 @@ let S = null; // {handle}
 function show(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
-  // Stop auto-refresh when leaving dashboard
-  if(id!=='dash') stopDashAutoRefresh();
+  // Auto-refresh inbox while dashboard is visible
+  if(id==='dash') startDashAutoRefresh();
+  else stopDashAutoRefresh();
 }
 function goHome(){ show('home'); refreshNav(); }
 function showLoginView(){ clearLogin(); show('login'); }
