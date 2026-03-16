@@ -570,22 +570,23 @@ async function apiGetAccount(handle){
   
   if(accError||!account) return null;
   
-  // Get messages
+  // Get messages (including soft-deleted, so tip amounts remain in earnings)
   const {data:messages,error:msgError}=await supabaseClient
     .from('messages')
-    .select('id,text,is_new,created_at,amount_ngn,is_priority')
+    .select('id,text,is_new,created_at,amount_ngn,is_priority,is_deleted')
     .eq('handle',normalizedHandle)
     .order('created_at',{ascending:false});
   
   if(msgError) console.error('Error fetching messages:',msgError);
   
-  // Format messages
+  // Format messages — isDeleted:true ones are hidden from inbox but counted in earnings
   const formattedMessages=(messages||[]).map(msg=>{
     const date=new Date(msg.created_at);
     return {
       id:msg.id,
       text:msg.text,
       isNew:msg.is_new===true||msg.is_new===1,
+      isDeleted:msg.is_deleted===true,
       amountNgn:msg.amount_ngn||0,
       isPriority:msg.is_priority===true||msg.is_priority===1,
       time:date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
@@ -643,19 +644,20 @@ async function apiSendQuestion(handle,text){
 
 async function apiDeleteMessage(messageId,handle){
   if(!USE_SUPABASE) throw new Error('Supabase not configured');
-  
+
   const normalizedHandle=handle.toLowerCase();
-  
+
+  // Soft-delete: mark as deleted so tip amounts are preserved in earnings history
   const {error}=await supabaseClient
     .from('messages')
-    .delete()
+    .update({is_deleted:true})
     .eq('id',messageId)
     .eq('handle',normalizedHandle);
-  
+
   if(error){
     throw new Error(error.message||'Failed to delete message');
   }
-  
+
   return {success:true};
 }
 
@@ -750,9 +752,12 @@ function startDashAutoRefresh(){
           ? (paid===1 ? `New gift: ₦${paidTotal.toLocaleString()}!` : `You received ₦${paidTotal.toLocaleString()} in ${paid} new gifts!`)
           : (added===1 ? 'New anonymous question!' : `You have ${added} new anonymous questions!`);
         toast(msgText);
+        // System notification — fire whether tab is visible or in background
         if(typeof Notification!=='undefined' && Notification.permission==='granted'){
           new Notification('TellMe 👂', {body: msgText, icon: '/favicon.ico'});
         }
+        // Unique beep sound via Web Audio API
+        playAlertBeep();
       }
       lastDashTotal = msgs.length;
       // Re-render grid if dash is active
@@ -774,6 +779,7 @@ function openDash(){
   renderDash(); 
   show('dash'); 
   startDashAutoRefresh();
+  refreshNotifBtn();
 }
 
 async function refreshDash(){
@@ -1096,6 +1102,27 @@ function resetAsk(){
 function previewAsk(){ if(S) loadAsk(S.handle); }
 
 /* ====== DASHBOARD ====== */
+// Unique double-beep alert using Web Audio API
+function playAlertBeep(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    function beep(freq,start,dur){
+      const o=ctx.createOscillator();
+      const g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(freq,ctx.currentTime+start);
+      g.gain.setValueAtTime(0,ctx.currentTime+start);
+      g.gain.linearRampToValueAtTime(0.4,ctx.currentTime+start+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+start+dur);
+      o.start(ctx.currentTime+start);
+      o.stop(ctx.currentTime+start+dur);
+    }
+    beep(880,0,0.12);
+    beep(1100,0.18,0.12);
+  }catch(e){ /* audio not supported — fail silently */ }
+}
+
 function enableNotifications(){
   if(typeof Notification==='undefined'){
     toast('Notifications not supported in this browser.');
@@ -1103,18 +1130,30 @@ function enableNotifications(){
   }
   const btn=document.getElementById('notifBtn');
   if(Notification.permission==='granted'){
-    toast('You\'ll get alerts for new questions and gifts.');
+    toast('Alerts already on!');
     if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+    playAlertBeep();
     return;
   }
   Notification.requestPermission().then(p=>{
     if(p==='granted'){
       toast('You\'ll get alerts for new questions and gifts.');
       if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+      playAlertBeep();
     }else if(p==='denied'){
-      toast('Notifications blocked in your browser settings.');
+      toast('Notifications blocked — check browser settings.');
     }
   }).catch(()=>toast('Could not enable notifications.'));
+}
+
+function refreshNotifBtn(){
+  const btn=document.getElementById('notifBtn');
+  if(!btn) return;
+  if(typeof Notification!=='undefined' && Notification.permission==='granted'){
+    btn.textContent='🔔 Alerts on';
+    btn.style.color='var(--accent)';
+    btn.disabled=true;
+  }
 }
 
 async function renderDash(){
@@ -1127,11 +1166,13 @@ async function renderDash(){
   }
   if(!acc)return;
   const msgs=acc.messages||[];
-  const nw=msgs.filter(m=>m.isNew).length;
+  // Only show non-deleted messages in the inbox (deleted ones stay in earnings history)
+  const displayMsgs=msgs.filter(m=>!m.isDeleted);
+  const nw=displayMsgs.filter(m=>m.isNew).length;
   // Alert when new messages arrive (refresh or auto-refresh, not initial load)
-  if(lastDashTotal !== null && msgs.length > lastDashTotal){
-    const added=msgs.length-lastDashTotal;
-    const newSlice=msgs.slice(0,added);
+  if(lastDashTotal !== null && displayMsgs.length > lastDashTotal){
+    const added=displayMsgs.length-lastDashTotal;
+    const newSlice=displayMsgs.slice(0,added);
     const paid=newSlice.filter(m=>m.isPriority&&m.amountNgn).length;
     const paidTotal=newSlice.reduce((sum,m)=>sum+(m.isPriority&&m.amountNgn?m.amountNgn:0),0);
     let msgText='';
@@ -1143,26 +1184,25 @@ async function renderDash(){
       msgText=added===1?'New anonymous question!':'You have '+added+' new anonymous questions!';
     }
     toast(msgText);
-    if(document.hidden&&typeof Notification!=='undefined'){
-      if(Notification.permission==='default') Notification.requestPermission();
-      if(Notification.permission==='granted') new Notification('TellMe',{body:msgText});
+    if(typeof Notification!=='undefined' && Notification.permission==='granted'){
+      new Notification('TellMe 👂', {body:msgText, icon:'/favicon.ico'});
     }
   }
-  lastDashTotal=msgs.length;
+  lastDashTotal=displayMsgs.length;
   document.getElementById('dTitle').textContent='@'+S.handle;
   document.getElementById('dSub').textContent='anonymous questions · dashboard';
   document.getElementById('dLink').textContent=getPublicUrl(S.handle);
-  document.getElementById('sTot').textContent=msgs.length;
+  document.getElementById('sTot').textContent=displayMsgs.length;
   document.getElementById('sNew').textContent=nw;
-  document.getElementById('slabel').textContent=msgs.length?(nw?nw+' new · '+msgs.length+' total':msgs.length+' questions'):'';
+  document.getElementById('slabel').textContent=displayMsgs.length?(nw?nw+' new · '+displayMsgs.length+' total':displayMsgs.length+' questions'):'';
 
   const g=document.getElementById('grid');
-  if(!msgs.length){
+  if(!displayMsgs.length){
     g.innerHTML=`<div class="empty"><div class="ei">💌</div><h3>No questions yet</h3><p>Copy your link and share it anywhere.</p></div>`;
     lastDashTotal=0;
     return;
   }
-  const sorted=[...msgs].sort((a,b)=>(b.isPriority?1:0)-(a.isPriority?1:0)||b.id-a.id);
+  const sorted=[...displayMsgs].sort((a,b)=>(b.isPriority?1:0)-(a.isPriority?1:0)||b.id-a.id);
   g.innerHTML=sorted.map(m=>`
     <div class="mc ${m.isNew?'isnew':''} ${m.isPriority?'paid':''}" id="mc${m.id}">
       <div class="mt">"${esc(m.text)}"</div>
@@ -1203,7 +1243,8 @@ async function delMsg(id){
     }
   }else{
   const acc=getAcc(S.handle);
-  acc.messages=acc.messages.filter(m=>m.id!==id);
+  const msg=acc.messages.find(m=>m.id===id);
+  if(msg) msg.isDeleted=true;
   putAcc(S.handle,acc);
   renderDash();
   }

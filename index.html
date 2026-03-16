@@ -726,9 +726,12 @@ function startDashAutoRefresh(){
           ? (paid===1 ? `New gift: ₦${paidTotal.toLocaleString()}!` : `You received ₦${paidTotal.toLocaleString()} in ${paid} new gifts!`)
           : (added===1 ? 'New anonymous question!' : `You have ${added} new anonymous questions!`);
         toast(msgText);
+        // System notification — fire whether tab is visible or in background
         if(typeof Notification!=='undefined' && Notification.permission==='granted'){
           new Notification('TellMe 👂', {body: msgText, icon: '/favicon.ico'});
         }
+        // Unique beep sound via Web Audio API
+        playAlertBeep();
       }
       lastDashTotal = msgs.length;
       // Re-render grid if dash is active
@@ -750,6 +753,7 @@ function openDash(){
   renderDash(); 
   show('dash'); 
   startDashAutoRefresh();
+  refreshNotifBtn();
 }
 
 async function refreshDash(){
@@ -1065,6 +1069,27 @@ function resetAsk(){
 function previewAsk(){ if(S) loadAsk(S.handle); }
 
 /* ====== DASHBOARD ====== */
+// Unique double-beep alert using Web Audio API
+function playAlertBeep(){
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    function beep(freq,start,dur){
+      const o=ctx.createOscillator();
+      const g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(freq,ctx.currentTime+start);
+      g.gain.setValueAtTime(0,ctx.currentTime+start);
+      g.gain.linearRampToValueAtTime(0.4,ctx.currentTime+start+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+start+dur);
+      o.start(ctx.currentTime+start);
+      o.stop(ctx.currentTime+start+dur);
+    }
+    beep(880,0,0.12);   // first beep  — high A
+    beep(1100,0.18,0.12); // second beep — higher
+  }catch(e){ /* audio not supported — fail silently */ }
+}
+
 function enableNotifications(){
   if(typeof Notification==='undefined'){
     toast('Notifications not supported in this browser.');
@@ -1072,18 +1097,30 @@ function enableNotifications(){
   }
   const btn=document.getElementById('notifBtn');
   if(Notification.permission==='granted'){
-    toast('You\'ll get alerts for new questions and gifts.');
+    toast('Alerts already on!');
     if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+    playAlertBeep(); // preview the sound
     return;
   }
   Notification.requestPermission().then(p=>{
     if(p==='granted'){
       toast('You\'ll get alerts for new questions and gifts.');
       if(btn){btn.textContent='🔔 Alerts on';btn.style.color='var(--accent)';btn.disabled=true;}
+      playAlertBeep(); // preview the sound on enable
     }else if(p==='denied'){
-      toast('Notifications blocked in your browser settings.');
+      toast('Notifications blocked — check browser settings.');
     }
   }).catch(()=>toast('Could not enable notifications.'));
+}
+
+function refreshNotifBtn(){
+  const btn=document.getElementById('notifBtn');
+  if(!btn) return;
+  if(typeof Notification!=='undefined' && Notification.permission==='granted'){
+    btn.textContent='🔔 Alerts on';
+    btn.style.color='var(--accent)';
+    btn.disabled=true;
+  }
 }
 
 async function renderDash(fresh){
@@ -1112,9 +1149,9 @@ async function renderDash(fresh){
       msgText=added===1?'New anonymous question!':'You have '+added+' new anonymous questions!';
     }
     toast(msgText);
-    if(document.hidden&&typeof Notification!=='undefined'){
-      if(Notification.permission==='default') Notification.requestPermission();
-      if(Notification.permission==='granted') new Notification('TellMe',{body:msgText});
+    // Notification fires always (not just when hidden) — interval handles new-only detection
+    if(typeof Notification!=='undefined' && Notification.permission==='granted'){
+      new Notification('TellMe 👂', {body:msgText, icon:'/favicon.ico'});
     }
   }
   lastDashTotal=msgs.length;
