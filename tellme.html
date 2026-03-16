@@ -733,10 +733,32 @@ let lastDashTotal = null;
 function startDashAutoRefresh(){
   // Clear any existing interval
   if(dashRefreshInterval) clearInterval(dashRefreshInterval);
-  // Refresh dashboard every 4 seconds (faster alerts for streamers)
+  // Refresh dashboard every 4 seconds — always force fresh fetch from Supabase
   dashRefreshInterval = setInterval(async ()=>{
-    if(S && document.getElementById('view-dash')?.classList.contains('active')){
-      await renderDash();
+    if(!S) return;
+    if(USE_SUPABASE){
+      // Bypass cache: fetch fresh from Supabase, update grid & fire notifications
+      const acc = await apiGetAccount(S.handle);
+      if(!acc) return;
+      const msgs = acc.messages || [];
+      if(lastDashTotal !== null && msgs.length > lastDashTotal){
+        const added = msgs.length - lastDashTotal;
+        const newSlice = msgs.slice(0, added);
+        const paid = newSlice.filter(m=>m.isPriority && m.amountNgn).length;
+        const paidTotal = newSlice.reduce((s,m)=>s+(m.isPriority&&m.amountNgn?m.amountNgn:0),0);
+        let msgText = paid>0
+          ? (paid===1 ? `New gift: ₦${paidTotal.toLocaleString()}!` : `You received ₦${paidTotal.toLocaleString()} in ${paid} new gifts!`)
+          : (added===1 ? 'New anonymous question!' : `You have ${added} new anonymous questions!`);
+        toast(msgText);
+        if(typeof Notification!=='undefined' && Notification.permission==='granted'){
+          new Notification('TellMe 👂', {body: msgText, icon: '/favicon.ico'});
+        }
+      }
+      lastDashTotal = msgs.length;
+      // Re-render grid if dash is active
+      if(document.getElementById('view-dash')?.classList.contains('active')){
+        await renderDash();
+      }
     }
   }, 4000);
 }
