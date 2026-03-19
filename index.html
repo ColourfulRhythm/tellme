@@ -59,6 +59,9 @@
   .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);font-family:'DM Sans',sans-serif;font-weight:500;}
   .btn.ghost:hover{border-color:var(--accent2);color:var(--text);background:transparent;transform:none;}
   .divider{text-align:center;color:var(--muted);font-size:13px;margin:14px 0;}
+  .download-cta-wrap{display:flex;justify-content:center;margin:-20px 0 34px;padding:0 24px;}
+  .download-cta{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 16px;font-size:14px;color:var(--text);text-decoration:none;transition:all .2s;}
+  .download-cta:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px);}
 
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:700px;margin:0 auto 80px;padding:0 24px;}
   .step{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px 18px;text-align:center;transition:border-color .2s;}
@@ -229,6 +232,9 @@
     <div class="badge">✦ Anonymous Questions</div>
     <h1>Let them ask.<br><em>You decide</em><br>what's shared.</h1>
     <p>Create your link, collect anonymous questions, download beautiful bento cards to reply on Reels, TikTok, or Stories.</p>
+  </div>
+  <div class="download-cta-wrap">
+    <a class="download-cta" href="/TellMe-1.0.dmg" download>Download for macOS (.dmg)</a>
   </div>
 
   <div class="box" id="createBox">
@@ -454,8 +460,8 @@
 // Supabase Configuration
 // These values are injected at build time from environment variables
 // Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel dashboard: Settings → Environment Variables
-const SUPABASE_URL = 'ENV_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'ENV_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://yakzsrkwhlwwdkonlzem.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlha3pzcmt3aGx3d2Rrb25semVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MjQ2MTksImV4cCI6MjA4NzEwMDYxOX0.nhRdfpnyJQ5sR33aA8z7-tek_Ftbnt6t8PICtr-h-Bc';
 const PLATFORM_CUT = 0.1;
 const MIN_PAY = 500;
 const MAX_PAY = 50000;

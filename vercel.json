@@ -8,6 +8,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/TellMe-1.0.dmg",
+      "destination": "/TellMe-1.0.dmg"
+    },
+    {
+      "source": "/TellMe-1.0.dmg.zip",
+      "destination": "/TellMe-1.0.dmg.zip"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     },
