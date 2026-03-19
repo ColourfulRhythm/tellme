@@ -892,9 +892,10 @@ function startDashAutoRefresh(){
       const acc = await apiGetAccount(S.handle);
       if(!acc) return;
       const msgs = acc.messages || [];
-      if(lastDashTotal !== null && msgs.length > lastDashTotal){
-        const added = msgs.length - lastDashTotal;
-        const newSlice = msgs.slice(0, added);
+      const displayMsgs = msgs.filter(m=>!m.isDeleted);
+      if(lastDashTotal !== null && displayMsgs.length > lastDashTotal){
+        const added = displayMsgs.length - lastDashTotal;
+        const newSlice = displayMsgs.slice(0, added);
         const paid = newSlice.filter(m=>m.isPriority && m.amountNgn).length;
         const paidTotal = newSlice.reduce((s,m)=>s+(m.isPriority&&m.amountNgn?m.amountNgn:0),0);
         let msgText = paid>0
@@ -909,7 +910,7 @@ function startDashAutoRefresh(){
         // Read priority messages aloud after beep (for streamers)
         speakPriorityMessages(newSlice);
       }
-      lastDashTotal = msgs.length;
+      lastDashTotal = displayMsgs.length;
       // Re-render grid if dash is active
       if(document.getElementById('view-dash')?.classList.contains('active')){
         await renderDash();
