@@ -28,16 +28,22 @@ jobs:
             windows/package.json
 
       - name: Install root deps
+        shell: bash
         run: npm install
 
-      - name: Inject env and build
+      - name: Inject env vars
         shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node build.js
+
+      - name: Build Windows exe
+        shell: bash
+        working-directory: windows
         run: |
-          node build.js
-          cd windows && npm install && node build-win.js
+          npm install
+          node build-win.js
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
