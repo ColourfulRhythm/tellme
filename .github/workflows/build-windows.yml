@@ -7,8 +7,10 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       - name: Check secrets
         shell: bash
@@ -19,13 +21,9 @@ jobs:
           fi
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            package.json
-            windows/package.json
 
       - name: Install root deps
         shell: bash
@@ -40,10 +38,9 @@ jobs:
 
       - name: Build Windows exe
         shell: bash
-        working-directory: windows
         run: |
-          npm install
-          node build-win.js
+          npm install --prefix windows
+          node windows/build-win.js
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
