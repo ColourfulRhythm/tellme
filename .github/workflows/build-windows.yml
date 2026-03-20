@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify windows folder
+        shell: bash
+        run: |
+          if [ ! -d windows ]; then echo "::error::windows/ folder missing after checkout"; ls -la; exit 1; fi
+          echo "✓ windows/ exists"
+
       - name: Check secrets
         shell: bash
         run: |
