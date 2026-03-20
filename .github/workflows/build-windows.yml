@@ -1,0 +1,45 @@
+# Build TellMe Windows .exe — run manually after adding secrets
+name: Build Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Add SUPABASE_URL and SUPABASE_ANON_KEY as repository secrets"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          node-cache-dependency-path: |
+            package.json
+            windows/package.json
+
+      - name: Install root deps
+        run: npm install
+
+      - name: Inject env and build
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          node build.js
+          cd windows && npm install && node build-win.js
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TellMe-Windows
+          path: dist-win/*.exe
