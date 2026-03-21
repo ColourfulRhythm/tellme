@@ -346,7 +346,7 @@
             <button type="button" class="pay-chip" data-amount="5000" onclick="setPayAmount(5000,this)">₦5k</button>
           </div>
           <div class="pay-custom">
-            <input type="number" id="payCustom" placeholder="Custom ₦" min="500" max="50000" step="100" onchange="setPayAmount(null,null)" />
+            <input type="number" id="payCustom" placeholder="Custom ₦" min="500" max="50000" step="100" oninput="setPayAmount(null,null)" onchange="setPayAmount(null,null)" />
           </div>
         </div>
         <button class="btn-send" id="sendBtn" onclick="sendQ()">Send anonymously →</button>
@@ -1016,7 +1016,7 @@ function upCC(){
 async function sendQ(){
   const txt=document.getElementById('askMsg').value.trim();
   if(!txt||!askTarget)return;
-
+  setPayAmount(null,null);
   const amt=askPayAmount>=MIN_PAY&&askPayAmount<=MAX_PAY?askPayAmount:0;
   const btn=document.getElementById('sendBtn');
   if(btn){ btn.disabled=true; btn.textContent='Please wait...'; }
