@@ -396,7 +396,7 @@
         <textarea id="askMsg" placeholder="Ask anything... they'll never know it's you 👀" maxlength="280" oninput="upCC()"></textarea>
         <div class="cc" id="cc">0 / 280</div>
         <div class="pay-opt">
-          <div class="pay-label">Optional: Prioritize with payment (₦500–₦5,000)</div>
+          <div class="pay-label">Optional: Prioritize with payment (₦200–₦5,000)</div>
           <div class="pay-presets">
             <button type="button" class="pay-chip" data-amount="0" onclick="setPayAmount(0,this)">Free</button>
             <button type="button" class="pay-chip" data-amount="500" onclick="setPayAmount(500,this)">₦500</button>
@@ -406,7 +406,7 @@
             <button type="button" class="pay-chip" data-amount="5000" onclick="setPayAmount(5000,this)">₦5k</button>
           </div>
           <div class="pay-custom">
-            <input type="number" id="payCustom" placeholder="Custom ₦" min="500" max="50000" step="100" oninput="setPayAmount(null,null)" onchange="setPayAmount(null,null)" />
+            <input type="number" id="payCustom" placeholder="Custom ₦" min="200" max="50000" step="100" oninput="setPayAmount(null,null)" onchange="setPayAmount(null,null)" />
           </div>
         </div>
         <button class="btn-send" id="sendBtn" onclick="sendQ()">Send anonymously →</button>
@@ -551,7 +551,7 @@ const PRODUCTION_URL = 'https://tellme.adparlay.com';
 const PLATFORM_CUT = 0.1;
 const MIN_PAYOUT = 5000;
 const AMOUNT_PRESETS = [500, 1000, 2000, 3000, 5000];
-const MIN_PAY = 500;
+const MIN_PAY = 200;
 const MAX_PAY = 50000;
 
 function getApiBase() {

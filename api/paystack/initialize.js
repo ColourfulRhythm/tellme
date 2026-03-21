@@ -7,7 +7,7 @@ const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const MIN_AMOUNT = 500;
+const MIN_AMOUNT = 200;
 const MAX_AMOUNT = 50000;
 
 export default async function handler(req, res) {
