@@ -1340,15 +1340,16 @@ function speakPriorityMessages(newSlice){
   if(!priority.length) return;
   if(typeof window.speechSynthesis==='undefined') return;
   window.speechSynthesis.cancel();
+  const voices=speechSynthesis.getVoices();
+  const preferred=['Samantha','Karen','Daniel','Alex','Google US English','Microsoft Zira'];
+  const best=preferred.find(p=>voices.some(v=>v.name.includes(p)))||voices.find(v=>v.lang.startsWith('en'))||voices[0];
   setTimeout(()=>{
     priority.forEach(m=>{
       const amt=m.amountNgn?`₦${m.amountNgn.toLocaleString()}`:'';
       const intro=amt ? `Priority message. Someone paid ${amt} to ask:` : 'Priority message.';
       const u=new SpeechSynthesisUtterance(`${intro} ${m.text}`);
-      u.rate=0.95;
-      u.pitch=1;
-      const voices=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('en'));
-      if(voices.length) u.voice=voices[0];
+      u.rate=0.95; u.pitch=1;
+      if(best) u.voice=best;
       speechSynthesis.speak(u);
     });
   },400);
@@ -1983,6 +1984,7 @@ function route(){
 window.addEventListener('hashchange',route);
 window.addEventListener('popstate',route);
 window.addEventListener('DOMContentLoaded',()=>{ 
+  if(window.speechSynthesis) window.speechSynthesis.getVoices();
   restoreSession();
   wirePins();
   // App: first-time onboarding → then login/signup (never full landing page)

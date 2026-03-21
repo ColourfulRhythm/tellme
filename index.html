@@ -372,6 +372,7 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <button class="sm" onclick="refreshDash()" id="refreshBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">↻ Refresh</button>
+        <button class="sm" onclick="toggleReadAloud()" id="readAloudBtn" title="Read priority messages aloud" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">🔊 Read aloud</button>
         <button class="sm" onclick="enableNotifications()" id="notifBtn" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .2s;">🔔 Enable alerts</button>
         <button class="sm" onclick="showEarnings()" style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:7px 14px;font-size:13px;color:var(--accent);cursor:pointer;transition:all .2s;">💰 Earnings</button>
         <button class="lout" onclick="logout()">Log out</button>
@@ -711,6 +712,9 @@ function refreshNav(){
 // Auto-refresh variables
 let dashRefreshInterval = null;
 let lastDashTotal = null;
+const READ_ALOUD_KEY = 'tm_read_priority_aloud';
+function isReadAloudEnabled(){ return localStorage.getItem(READ_ALOUD_KEY)==='1'; }
+function setReadAloud(on){ localStorage.setItem(READ_ALOUD_KEY, on?'1':'0'); }
 
 function startDashAutoRefresh(){
   // Clear any existing interval
@@ -738,6 +742,8 @@ function startDashAutoRefresh(){
         }
         // Unique beep sound via Web Audio API
         playAlertBeep();
+        // Read priority messages aloud (TTS)
+        speakPriorityMessages(newSlice);
       }
       lastDashTotal = msgs.length;
       // Re-render grid if dash is active
@@ -760,6 +766,7 @@ function openDash(){
   show('dash'); 
   startDashAutoRefresh();
   refreshNotifBtn();
+  refreshReadAloudBtn();
 }
 
 async function refreshDash(){
@@ -1128,6 +1135,40 @@ function refreshNotifBtn(){
     btn.disabled=true;
   }
 }
+function toggleReadAloud(){
+  const on=!isReadAloudEnabled();
+  setReadAloud(on);
+  refreshReadAloudBtn();
+  toast(on ? 'Priority messages will be read aloud 🔊' : 'Read aloud off');
+}
+function refreshReadAloudBtn(){
+  const btn=document.getElementById('readAloudBtn');
+  if(!btn) return;
+  const on=isReadAloudEnabled();
+  btn.textContent=on ? '🔊 Read aloud on' : '🔊 Read aloud';
+  btn.style.color=on ? 'var(--accent)' : '';
+}
+function speakPriorityMessages(newSlice){
+  if(!isReadAloudEnabled()) return;
+  const priority=newSlice.filter(m=>m.isPriority&&m.amountNgn);
+  if(!priority.length) return;
+  if(typeof window.speechSynthesis==='undefined') return;
+  window.speechSynthesis.cancel();
+  const voices=speechSynthesis.getVoices();
+  const preferred=['Samantha','Karen','Daniel','Alex','Google US English','Microsoft Zira'];
+  const best=preferred.find(p=>voices.some(v=>v.name.includes(p)))||voices.find(v=>v.lang.startsWith('en'))||voices[0];
+  setTimeout(()=>{
+    priority.forEach(m=>{
+      const amt=m.amountNgn?`₦${m.amountNgn.toLocaleString()}`:'';
+      const intro=amt ? `Priority message. Someone paid ${amt} to ask:` : 'Priority message.';
+      const u=new SpeechSynthesisUtterance(`${intro} ${m.text}`);
+      u.rate=0.95; u.pitch=1;
+      if(best) u.voice=best;
+      speechSynthesis.speak(u);
+    });
+  },400);
+}
+document.addEventListener('DOMContentLoaded',()=>{ if(window.speechSynthesis) window.speechSynthesis.getVoices(); });
 
 async function renderDash(fresh){
   if(!S)return;
