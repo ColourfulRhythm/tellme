@@ -123,6 +123,18 @@
   .earn-form input[readonly]{opacity:.8;cursor:not-allowed;}
   .earn-warn{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.25);border-radius:12px;padding:14px;font-size:13px;color:var(--danger);margin-bottom:16px;}
 
+  .rc-note{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:16px;}
+  .rc-wait{text-align:center;padding:24px 12px;font-size:15px;color:var(--muted);}
+  .rc-wait strong{color:var(--accent2);display:block;margin-top:8px;font-family:'Syne',sans-serif;font-size:13px;letter-spacing:.06em;}
+  .rc-msgs{max-height:min(52vh,420px);overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;padding:4px 2px;}
+  .rc-bubble{max-width:88%;padding:11px 14px;border-radius:16px;font-size:14px;line-height:1.45;word-break:break-word;}
+  .rc-bubble.me{align-self:flex-end;background:rgba(124,106,255,.22);border:1px solid rgba(124,106,255,.35);}
+  .rc-bubble.them{align-self:flex-start;background:var(--surface2);border:1px solid var(--border);}
+  .rc-meta{font-size:10px;color:var(--muted);margin-bottom:4px;opacity:.85;}
+  .rc-row{display:flex;gap:8px;align-items:flex-end;}
+  .rc-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;}
+  .rc-row input:focus{border-color:var(--accent2);outline:none;}
+
   /* DASHBOARD */
   .dash{max-width:920px;margin:0 auto;padding:40px 24px 80px;overflow:visible;}
   .dh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:26px;gap:14px;flex-wrap:wrap;}
@@ -437,6 +449,7 @@
           <button onclick="toggleReadAloud();closeHamburger()" id="readAloudBtn" title="Read priority messages aloud"><span class="hm-icon">♪</span> Read aloud</button>
           <button onclick="enableNotifications();closeHamburger()" id="notifBtn" title="Get notifications for new questions"><span class="hm-icon">◉</span> Alerts</button>
           <button onclick="showEarnings();closeHamburger()" title="Earnings and payout"><span class="hm-icon">₦</span> Earnings</button>
+          <button onclick="showRandomChat();closeHamburger()" title="Anonymous random chat"><span class="hm-icon">💬</span> Random chat</button>
           <button class="lout" onclick="logout();closeHamburger()"><span class="hm-icon">→</span> Log out</button>
         </div>
       </div>
@@ -499,6 +512,36 @@
       </div>
     </div>
     <button class="btn ghost" onclick="show('dash')">← Back to inbox</button>
+  </div>
+</div>
+
+<!-- RANDOM ANONYMOUS CHAT -->
+<div class="view" id="view-randomchat">
+  <div class="earn-view">
+    <h2>Random chat</h2>
+    <p class="sub">Talk anonymously with another TellMe user — no handles shown.</p>
+    <div class="earn-card" id="rcOffline" style="display:none;">
+      <p class="rc-note">Random chat needs TellMe online (Supabase). Open the app from your live site or enable Supabase in this build.</p>
+      <button class="btn ghost" onclick="show('dash')">← Back to inbox</button>
+    </div>
+    <div class="earn-card" id="rcIntro">
+      <p class="rc-note">We match you with someone else who is also looking. Be kind — no harassment, spam, or illegal content. You can leave anytime.</p>
+      <button class="btn" type="button" id="rcFindBtn" onclick="randomChatStartFinding()">Find someone</button>
+    </div>
+    <div class="earn-card" id="rcWaiting" style="display:none;">
+      <div class="rc-wait">Looking for a stranger…<strong>This can take a minute. Keep this tab open.</strong></div>
+      <button class="btn ghost" type="button" onclick="randomChatCancelWait()">Cancel</button>
+    </div>
+    <div class="earn-card" id="rcChat" style="display:none;">
+      <div class="rc-meta">Connected · you are anonymous to each other</div>
+      <div class="rc-msgs" id="rcMsgs"></div>
+      <div class="rc-row">
+        <input type="text" id="rcInput" maxlength="2000" placeholder="Message…" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();randomChatSend();}" />
+        <button class="btn" type="button" onclick="randomChatSend()">Send</button>
+      </div>
+      <button class="btn ghost" type="button" style="margin-top:14px;" onclick="randomChatLeave()">Leave chat</button>
+    </div>
+    <button class="btn ghost" onclick="randomChatBackToDash()" style="margin-top:8px;">← Back to inbox</button>
   </div>
 </div>
 
@@ -856,6 +899,7 @@ function restoreSession(){
 
 /* ====== VIEWS ====== */
 function show(id){
+  if(id!=='randomchat') stopRandomChatSession();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
   // Auto-refresh inbox while dashboard is visible
@@ -1491,6 +1535,145 @@ async function showEarnings(){
     document.getElementById('earnSaved').style.display='none';
   }
 }
+
+/* ====== RANDOM ANONYMOUS CHAT ====== */
+let randomChatRoomId=null;
+let randomChatMatchTimer=null;
+let randomChatMsgTimer=null;
+let randomChatFinding=false;
+
+function randomChatShowPanel(activeId){
+  ['rcIntro','rcWaiting','rcChat','rcOffline'].forEach(id=>{
+    const e=document.getElementById(id);
+    if(e) e.style.display=(id===activeId)?'block':'none';
+  });
+}
+
+async function stopRandomChatSession(){
+  if(randomChatMatchTimer){ clearInterval(randomChatMatchTimer); randomChatMatchTimer=null; }
+  if(randomChatMsgTimer){ clearInterval(randomChatMsgTimer); randomChatMsgTimer=null; }
+  const room=randomChatRoomId;
+  const wasFinding=randomChatFinding;
+  randomChatRoomId=null;
+  randomChatFinding=false;
+  if(USE_SUPABASE&&S&&(room||wasFinding)){
+    try{
+      await supabaseClient.rpc('tm_leave_random_chat',{p_handle:S.handle,p_room:room||null});
+    }catch(e){ console.warn('leave random chat',e); }
+  }
+}
+
+async function showRandomChat(){
+  if(!S){ showLoginView(); return; }
+  show('randomchat');
+  if(!USE_SUPABASE){
+    randomChatShowPanel('rcOffline');
+    return;
+  }
+  document.getElementById('rcOffline').style.display='none';
+  await stopRandomChatSession();
+  randomChatShowPanel('rcIntro');
+  const inp=document.getElementById('rcInput');
+  if(inp) inp.value='';
+  const box=document.getElementById('rcMsgs');
+  if(box) box.innerHTML='';
+}
+
+function randomChatRenderMessages(msgs){
+  const el=document.getElementById('rcMsgs');
+  if(!el||!S) return;
+  el.innerHTML=(msgs||[]).map(m=>{
+    const me=m.sender_handle===S.handle;
+    const t=new Date(Number(m.created_at)).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return `<div class="rc-bubble ${me?'me':'them'}"><div class="rc-meta">${me?'You':'Stranger'} · ${esc(t)}</div>${esc(m.body)}</div>`;
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+async function randomChatPollMessages(){
+  if(!USE_SUPABASE||!S||!randomChatRoomId) return;
+  const {data,error}=await supabaseClient.rpc('tm_random_chat_fetch',{p_handle:S.handle,p_room:randomChatRoomId});
+  if(error){ console.warn(error); return; }
+  if(!data||!data.ok||data.closed){
+    if(randomChatMsgTimer){ clearInterval(randomChatMsgTimer); randomChatMsgTimer=null; }
+    randomChatRoomId=null;
+    randomChatFinding=false;
+    toast(data?.gone?'Session ended.':'The other person left or the chat closed.');
+    randomChatShowPanel('rcIntro');
+    return;
+  }
+  randomChatRenderMessages(data.messages||[]);
+}
+
+async function randomChatStartFinding(){
+  if(!USE_SUPABASE||!S){ notify('Random chat is not available offline.'); return; }
+  randomChatFinding=true;
+  randomChatShowPanel('rcWaiting');
+  const tick=async()=>{
+    if(!randomChatFinding||!S) return;
+    const {data,error}=await supabaseClient.rpc('tm_match_random_chat',{p_handle:S.handle});
+    if(error){
+      notify(error.message||'Could not join matching.');
+      randomChatCancelWait();
+      return;
+    }
+    if(data?.error){ notify('Invalid session'); randomChatCancelWait(); return; }
+    if(data?.status==='matched'&&data.room_id){
+      if(randomChatMatchTimer){ clearInterval(randomChatMatchTimer); randomChatMatchTimer=null; }
+      randomChatFinding=false;
+      randomChatRoomId=data.room_id;
+      randomChatShowPanel('rcChat');
+      await randomChatPollMessages();
+      if(!randomChatMsgTimer){
+        randomChatMsgTimer=setInterval(randomChatPollMessages,2200);
+      }
+    }
+  };
+  await tick();
+  if(randomChatFinding&&!randomChatMatchTimer){
+    randomChatMatchTimer=setInterval(tick,1800);
+  }
+}
+
+async function randomChatCancelWait(){
+  if(randomChatMatchTimer){ clearInterval(randomChatMatchTimer); randomChatMatchTimer=null; }
+  randomChatFinding=false;
+  if(USE_SUPABASE&&S){
+    try{ await supabaseClient.rpc('tm_leave_random_chat',{p_handle:S.handle,p_room:null}); }catch(e){}
+  }
+  randomChatShowPanel('rcIntro');
+}
+
+async function randomChatSend(){
+  if(!USE_SUPABASE||!S||!randomChatRoomId) return;
+  const inp=document.getElementById('rcInput');
+  const text=(inp?.value||'').trim();
+  if(!text) return;
+  const {data,error}=await supabaseClient.rpc('tm_random_chat_send',{p_handle:S.handle,p_room:randomChatRoomId,p_body:text});
+  if(error){ notify(error.message||'Send failed'); return; }
+  if(!data?.ok){
+    notify(data?.error==='not_in_room'?'Chat has ended.':'Message not sent.');
+    await randomChatPollMessages();
+    return;
+  }
+  inp.value='';
+  await randomChatPollMessages();
+}
+
+async function randomChatLeave(){
+  if(randomChatMatchTimer){ clearInterval(randomChatMatchTimer); randomChatMatchTimer=null; }
+  if(randomChatMsgTimer){ clearInterval(randomChatMsgTimer); randomChatMsgTimer=null; }
+  const room=randomChatRoomId;
+  randomChatRoomId=null;
+  randomChatFinding=false;
+  if(USE_SUPABASE&&S&&room){
+    try{ await supabaseClient.rpc('tm_leave_random_chat',{p_handle:S.handle,p_room:room}); }catch(e){}
+  }
+  randomChatShowPanel('rcIntro');
+  toast('You left the chat.');
+}
+
+function randomChatBackToDash(){ show('dash'); }
 
 function normalizePhone(phone){
   const s=String(phone||'').replace(/\D/g,'');

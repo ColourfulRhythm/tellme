@@ -32,5 +32,10 @@ node_modules/
 
 # Build artifacts (if any)
 dist/
+dist-win/
 build/
 admin.html
+
+# Windows Electron build (generated)
+windows/tellme.html
+windows/icon.png

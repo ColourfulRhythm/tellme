@@ -10,6 +10,8 @@ const path = require('path');
 // Read environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const API_BASE_URL = process.env.API_BASE_URL ||
+  (process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://tellme.adparlay.com');
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('❌ Error: SUPABASE_URL and SUPABASE_ANON_KEY must be set');
@@ -40,6 +42,11 @@ files.forEach(file => {
   content = content.replace(
     /const SUPABASE_ANON_KEY = ['"][^'"]*['"];?/,
     `const SUPABASE_ANON_KEY = '${SUPABASE_ANON_KEY}';`
+  );
+
+  content = content.replace(
+    /const PRODUCTION_URL = ['"][^'"]*['"];?/,
+    `const PRODUCTION_URL = '${API_BASE_URL.replace(/\/$/, '')}';`
   );
 
   // Write back

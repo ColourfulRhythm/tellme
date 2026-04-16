@@ -1,4 +1,5 @@
 # Build TellMe Windows .exe — run manually after adding secrets
+# Uses Ubuntu (electron-builder cross-compiles for Windows)
 name: Build Windows
 
 on:
@@ -6,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
