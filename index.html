@@ -162,6 +162,10 @@
   .overlay.show{display:flex;animation:fi .2s ease;}
   .mbox{background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:30px;max-width:460px;width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;overflow:visible;}
   .mbox h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
+  .qr-img{width:260px;height:260px;border-radius:18px;border:1px solid var(--border);background:var(--surface2);object-fit:contain;}
+  .qr-link{width:100%;font-size:12px;color:var(--muted);word-break:break-all;text-align:center;line-height:1.4;}
+  .qr-actions{display:flex;gap:10px;width:100%;}
+  .qr-actions button{flex:1;}
 
   .bento{width:360px;border-radius:28px;padding:34px 30px 24px;position:relative;overflow:hidden;font-family:'DM Sans',sans-serif;flex-shrink:0;box-shadow:0 8px 40px var(--bshadow,rgba(0,0,0,.1)),0 1.5px 4px var(--bshadow2,rgba(0,0,0,.06));border:1px solid var(--bborder,rgba(255,255,255,.18));}
   .bento::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 80% 10%,var(--g1,rgba(200,245,100,.18)) 0%,transparent 50%),radial-gradient(ellipse at 20% 90%,var(--g2,rgba(124,106,255,.12)) 0%,transparent 45%);}
@@ -386,6 +390,7 @@
       </div>
       <button class="sm" onclick="copyLink()">Copy</button>
       <button class="sm" onclick="shareLink()">Share</button>
+      <button class="sm" onclick="openQr()">QR</button>
       <button class="sm" onclick="previewAsk()">Preview ↗</button>
     </div>
 
@@ -428,6 +433,20 @@
       </div>
     </div>
     <button class="btn ghost" onclick="show('dash')">← Back to inbox</button>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="overlay" id="qrModal">
+  <div class="mbox">
+    <h3>Scan to ask anonymously</h3>
+    <img class="qr-img" id="qrImg" alt="QR code" />
+    <div class="qr-link" id="qrLinkText"></div>
+    <div class="qr-actions">
+      <button class="bcx" onclick="copyLink()">Copy link</button>
+      <button class="bdl" onclick="openQrImage()">Open QR image</button>
+    </div>
+    <button class="btn ghost" onclick="closeQr()">Close</button>
   </div>
 </div>
 
@@ -1374,6 +1393,30 @@ function shareLink(){
   const url=getPublicUrl(S?.handle||'');
   if(navigator.share) navigator.share({title:'Ask me anonymously 👀',url});
   else copyLink();
+}
+
+/* ====== QR ====== */
+let _lastQrUrl=null;
+function getQrImageUrl(url){
+  const data=encodeURIComponent(url);
+  return `https://api.qrserver.com/v1/create-qr-code/?size=420x420&format=png&data=${data}`;
+}
+function openQr(){
+  const url=getPublicUrl(S?.handle||'');
+  _lastQrUrl=getQrImageUrl(url);
+  const img=document.getElementById('qrImg');
+  const t=document.getElementById('qrLinkText');
+  if(t) t.textContent=url;
+  if(img){
+    img.src=_lastQrUrl;
+    img.onerror=()=>toast('Could not load QR image (check internet)');
+  }
+  document.getElementById('qrModal').classList.add('show');
+}
+function closeQr(){ document.getElementById('qrModal').classList.remove('show'); }
+function openQrImage(){
+  if(!_lastQrUrl) return;
+  window.open(_lastQrUrl,'_blank','noopener');
 }
 
 /* ====== BENTO ====== */

@@ -37,7 +37,7 @@ app.use(cors({
 }));
 app.use(express.json());
 // Don't serve static files on Render - frontend is on Vercel
-// app.use(express.static(__dirname));
+app.use(express.static(__dirname));
 
 // Initialize database connection (lazy initialization for serverless)
 let db = null;
